@@ -1,0 +1,4 @@
+@import "tailwindcss";
+.navStyle{
+  @apply flex flex-1 justify-evenly items-center;
+}
