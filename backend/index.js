@@ -1,10 +1,22 @@
-const express = require('express')
-const dotenv = require('dotenv').config()
-const conrs = require('cors')
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '1.1.1.1']);
 
-const app = express();
+const express = require('express');
+const dotenv = require('dotenv').config();
+const cors = require('cors')
+const {mongoose} = require('mongoose')
+const app = express() 
+
+
+//database connection
+mongoose.connect(process.env.MONGO_URL)
+.then(() => console.log('Database Connected'))
+.catch((err) => console.log('Database not connected', err))
+
+//middleware
+app.use(express.json()  )
 
 app.use('/', require('./routes/authRoutes'))
 
 const port = 8000;
-app.listen(port, () => console.log(`Server is running on port ${port}`))
+app.listen(port,() => console.log(`Server is running on port ${port}`))

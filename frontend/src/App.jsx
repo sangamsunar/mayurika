@@ -10,14 +10,16 @@ import Footer from "./components/Footer";
 import axios from 'axios'
 import {Login} from "./pages/Login.jsx"
 import {Register} from "./pages/Register.jsx"
+import {Toaster} from 'react-hot-toast'
 
-axios.default.baseURL = 'http://localhost:8000';
-axios.defaults.withCredentails= true
+axios.defaults.baseURL = 'http://localhost:8000';
+axios.defaults.withCredentials= true
 
 function App() {
   return (
     <BrowserRouter>
       <Navbar/>
+      <Toaster position="bottom-right" toastOptions={{duration: 2000}}/>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/men" element={<Men />} />
