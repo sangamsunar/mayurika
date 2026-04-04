@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import axios from 'axios'
 import {toast} from 'react-hot-toast'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 
 export const Register = () => {
@@ -22,8 +22,11 @@ export const Register = () => {
       if(data.error){
         toast.error(data.error)
       }else{
-        setData({})
-        toast.success('Login Successfull. Welcome')
+        setData({name: '',
+          email: '',
+          password : ''
+        })
+        toast.success('Registration successful! Please login.')
         navigate('/Login')
       }
     }catch(error){
@@ -34,13 +37,13 @@ export const Register = () => {
     <div>
         <form onSubmit={registerUser}>
             <label htmlFor="name">Full Name</label>
-                <input type="text" id="name" placeholder='enter your full name.' value={data.name} onChange={(e) => setData({...data, name: e.target.value})}/>
+                <input type="text" required id="name" placeholder='enter your full name.' value={data.name} onChange={(e) => setData({...data, name: e.target.value})}/>
             <label htmlFor="email" >Email</label>
-            <input type="email" id="email" placeholder='enter your email.' value={data.email} onChange={(e) => setData({...data, email: e.target.value})}/>
+            <input type="email" required id="email" placeholder='enter your email.' value={data.email} onChange={(e) => setData({...data, email: e.target.value})}/>
             <label htmlFor="password" >Password</label>
-            <input type="password" id="password" placeholder='enter your password.' value={data.password} onChange={(e) => setData({...data, password: e.target.value})}/>
+            <input type="password" required id="password" placeholder='enter your password.' value={data.password} onChange={(e) => setData({...data, password: e.target.value})}/>
             <button type='submit'>Submit</button>
-            {/* <p>Already have an account? <Link to="/login">Login</Link></p> */}
+            <Link to="/Login"><p>Already have an account? Login</p></Link>
         </form>
     </div>
   )
