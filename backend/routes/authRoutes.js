@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router() //Router() is a function that allows us to use with epxress framework
 const cors =require('cors')
-const {test, registerUser, loginUser, getProfile} = require('../controllers/authController')
+const { test, registerUser, loginUser, getProfile, forgotPassword, verifyOtp, resetPassword, verifyEmail } = require('../controllers/authController')
 
 //middleware
 router.use(
@@ -15,5 +15,8 @@ router.get('/', test )
 router.post('/register', registerUser)
 router.post('/login', loginUser)
 router.get('/profile', getProfile)
-
+router.post('/forgot-password', forgotPassword)
+router.post('/verify-otp', verifyOtp)
+router.post('/reset-password', resetPassword)
+router.post('/verify-email', verifyEmail)
 module.exports = router
