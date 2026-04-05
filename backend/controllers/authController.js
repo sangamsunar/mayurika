@@ -70,7 +70,7 @@ const loginUser = async (req, res) => {
         if (!match) return res.json({ error: 'Passwords do not match' })
 
         jwt.sign(
-            { email: user.email, id: user._id, name: user.name },
+            { email: user.email, id: user._id, name: user.name, role: user.role },
             process.env.JWT_SECRET,
             {},
             (err, token) => {

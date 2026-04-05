@@ -28,6 +28,8 @@ function Navbar() {
 
       <div className="flex flex-1 justify-end items-center">
         <div className="flex pr-10 justify-end items-center gap-3">
+          <Link to ="/register">Register</Link>
+          <Link to ="/login">Login</Link>
           <Link to="/wishlist">
             <img src={wishlist} className="w-6" />
           </Link>

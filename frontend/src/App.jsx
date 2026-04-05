@@ -17,6 +17,8 @@ import { ForgotPassword } from './pages/ForgotPassword.jsx'
 import { VerifyOtp } from './pages/VerifyOtp.jsx'
 import { ResetPassword } from './pages/ResetPassword.jsx'
 import { VerifyEmail } from './pages/VerifyEmail.jsx'
+import { ProtectedRoute, AdminRoute } from './components/ProtectedRoute'
+import AdminDashboard from './pages/AdminDashboard'
 
 axios.defaults.baseURL = 'http://localhost:8000';
 axios.defaults.withCredentials = true
@@ -31,7 +33,6 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/men" element={<Men />} />
           <Route path="/women" element={<Women />} />
-          <Route path="/cart" element={<Cart />} />
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
@@ -40,6 +41,14 @@ function App() {
           <Route path="/verify-otp" element={<VerifyOtp />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+
+
+          {/* Protected - logged in users only */}
+          {/* <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
+          <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} /> */}
+          <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
+          {/* Admin only */}
+          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         </Routes>
         <Footer />
       </BrowserRouter>
