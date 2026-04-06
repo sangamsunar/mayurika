@@ -180,6 +180,10 @@ const verifyEmail = async (req, res) => {
 }
 
 
+const logout = (req, res) => {
+    res.clearCookie('token').json({ message: 'Logged out successfully' })
+}
+
 
 const getProfile = (req, res) => {
     const { token } = req.cookies
@@ -195,5 +199,5 @@ const getProfile = (req, res) => {
 
 module.exports = {
     test, registerUser, loginUser, getProfile,
-    forgotPassword, verifyOtp, resetPassword, verifyEmail
+    forgotPassword, verifyOtp, resetPassword, verifyEmail, logout
 }
