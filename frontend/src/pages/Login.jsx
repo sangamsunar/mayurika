@@ -1,10 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useContext } from 'react'
 import axios from 'axios'
 import { toast } from 'react-hot-toast'
 import { Link, useNavigate } from 'react-router-dom'
+import { UserContext } from '../../context/userContext'
+
 
 
 export const Login = () => {
+  const { setUser } = useContext(UserContext)
   const navigate = useNavigate()
   const [data, setData] = useState({
     email: '',
@@ -22,12 +25,15 @@ export const Login = () => {
       if (data.error) {
         toast.error(data.error)
       } else {
+        setUser(data)
+        toast.success('Logged in successfully!')
+
         setData({});
         navigate('/dashboard')
 
       }
     } catch (error) {
-
+      toast.error('Something went wrong')
     }
   }
   return (
