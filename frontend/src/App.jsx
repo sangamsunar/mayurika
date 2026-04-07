@@ -19,6 +19,7 @@ import { ResetPassword } from './pages/ResetPassword.jsx'
 import { VerifyEmail } from './pages/VerifyEmail.jsx'
 import { ProtectedRoute, AdminRoute } from './components/ProtectedRoute'
 import AdminDashboard from './pages/AdminDashboard'
+import ProductDetail from './pages/ProductDetail'
 
 axios.defaults.baseURL = 'http://localhost:8000';
 axios.defaults.withCredentials = true
@@ -41,6 +42,7 @@ function App() {
           <Route path="/verify-otp" element={<VerifyOtp />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
 
 
           {/* Protected - logged in users only */}
