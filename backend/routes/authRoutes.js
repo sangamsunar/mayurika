@@ -6,6 +6,7 @@ const { requireAuth, requireAdmin } = require('../middleware/authMiddleware')
 const { getGoldRate, scrapeRate, setManualRate } = require('../controllers/goldRateController')
 const { getProducts, getProduct, createProduct, updateProduct, deleteProduct } = require('../controllers/productController')
 const { upload } = require('../middleware/upload')
+const { addToCart, removeFromCart, getCart, addToWishlist, getWishlist } = require('../controllers/cartWishlistController')
 
 // middleware
 router.use(
@@ -51,5 +52,16 @@ router.put('/products/:id', requireAdmin,
     updateProduct
 )
 router.delete('/products/:id', requireAdmin, deleteProduct)
+
+
+// Cart
+router.get('/cart', requireAuth, getCart)
+router.post('/cart', requireAuth, addToCart)
+router.delete('/cart/:itemId', requireAuth, removeFromCart)
+
+// Wishlist
+router.get('/wishlist', requireAuth, getWishlist)
+router.post('/wishlist', requireAuth, addToWishlist)
+
 
 module.exports = router
