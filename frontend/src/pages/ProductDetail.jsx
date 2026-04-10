@@ -318,7 +318,7 @@ export default function ProductDetail() {
                     {/* WhatsApp */}
                     <div className="border-t pt-4">
                         <p className="text-sm text-gray-500">Want a completely different design?</p>
-                        <a href="https://wa.me/9779702296671" target="_blank" rel="noopener noreferrer"
+                        <a href="https://wa.me/9779804184887" target="_blank" rel="noopener noreferrer"
                             className="inline-flex items-center gap-2 mt-2 text-sm text-green-600 hover:text-green-700 font-medium">
                             💬 Chat with us on WhatsApp
                         </a>
