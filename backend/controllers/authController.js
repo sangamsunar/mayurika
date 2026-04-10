@@ -197,7 +197,40 @@ const getProfile = (req, res) => {
     }
 }
 
+const getSizeProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select('sizeProfile name email')
+        if (!user) return res.json({ error: 'User not found' })
+        res.json(user)
+    } catch (error) {
+        console.log(error)
+        res.json({ error: 'Something went wrong' })
+    }
+}
+
+const updateSizeProfile = async (req, res) => {
+    try {
+        const { finger, neck, wrist, ankle, notes } = req.body
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            {
+                sizeProfile: {
+                    finger: finger || null,
+                    neck: neck || null,
+                    wrist: wrist || null,
+                    ankle: ankle || null,
+                    notes: notes || ''
+                }
+            },
+            { returnDocument: 'after' }
+        )
+        res.json({ message: 'Size profile updated', sizeProfile: user.sizeProfile })
+    } catch (error) {
+        console.log(error)
+        res.json({ error: 'Something went wrong' })
+    }
+}
 module.exports = {
     test, registerUser, loginUser, getProfile,
-    forgotPassword, verifyOtp, resetPassword, verifyEmail, logout
+    forgotPassword, verifyOtp, resetPassword, verifyEmail, logout, getSizeProfile, updateSizeProfile
 }
