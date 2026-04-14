@@ -8,58 +8,64 @@ const { getGoldRate, scrapeRate, setManualRate } = require('../controllers/goldR
 const { getProducts, getProduct, createProduct, updateProduct, deleteProduct } = require('../controllers/productController')
 const { addToCart, removeFromCart, getCart, addToWishlist, getWishlist } = require('../controllers/cartWishlistController')
 const { createOrder, getUserOrders, getOrder, getAllOrders, updateOrderStatus } = require('../controllers/orderController')
+const { getReviews, addReview, deleteReview } = require('../controllers/reviewController')
+const { createStripeSession, stripeWebhook, initiateEsewa, esewaSuccess } = require('../controllers/paymentController')
 const { upload } = require('../middleware/upload')
 
-router.use(cors({
-    credentials: true,
-    origin: 'http://localhost:5173'
-}))
+router.use(cors({ credentials: true, origin: 'http://localhost:5173' }))
 
 // ── Auth ─────────────────────────────────────────────────
-router.get('/',                   test)
-router.post('/register',          registerUser)
-router.post('/login',             loginUser)
-router.get('/profile',            getProfile)
-router.post('/logout',            logout)
-router.post('/forgot-password',   forgotPassword)
-router.post('/verify-otp',        verifyOtp)
-router.post('/reset-password',    resetPassword)
-router.post('/verify-email',      verifyEmail)
+router.get('/', test)
+router.post('/register', registerUser)
+router.post('/login', loginUser)
+router.get('/profile', getProfile)
+router.post('/logout', logout)
+router.post('/forgot-password', forgotPassword)
+router.post('/verify-otp', verifyOtp)
+router.post('/reset-password', resetPassword)
+router.post('/verify-email', verifyEmail)
 
 // ── Size Profile ─────────────────────────────────────────
-router.get('/size-profile',       requireAuth, getSizeProfile)
-router.put('/size-profile',       requireAuth, updateSizeProfile)
+router.get('/size-profile', requireAuth, getSizeProfile)
+router.put('/size-profile', requireAuth, updateSizeProfile)
 
 // ── Gold Rate ─────────────────────────────────────────────
-router.get('/gold-rate',          getGoldRate)
-router.post('/gold-rate/scrape',  requireAdmin, scrapeRate)
-router.post('/gold-rate/manual',  requireAdmin, setManualRate)
+router.get('/gold-rate', getGoldRate)
+router.post('/gold-rate/scrape', requireAdmin, scrapeRate)
+router.post('/gold-rate/manual', requireAdmin, setManualRate)
 
-// ── Products — public ─────────────────────────────────────
-router.get('/products',           getProducts)
-router.get('/products/:id',       getProduct)
+// ── Products ──────────────────────────────────────────────
+router.get('/products', getProducts)
+router.get('/products/:id', getProduct)
+router.post('/products', requireAdmin, upload.fields([{ name: 'images', maxCount: 5 }, { name: 'model', maxCount: 1 }]), createProduct)
+router.put('/products/:id', requireAdmin, upload.fields([{ name: 'images', maxCount: 5 }, { name: 'model', maxCount: 1 }]), updateProduct)
+router.delete('/products/:id', requireAdmin, deleteProduct)
 
-// ── Products — admin only ─────────────────────────────────
-router.post('/products',          requireAdmin, upload.fields([{ name: 'images', maxCount: 5 }, { name: 'model', maxCount: 1 }]), createProduct)
-router.put('/products/:id',       requireAdmin, upload.fields([{ name: 'images', maxCount: 5 }, { name: 'model', maxCount: 1 }]), updateProduct)
-router.delete('/products/:id',    requireAdmin, deleteProduct)
+// ── Reviews ───────────────────────────────────────────────
+router.get('/products/:productId/reviews', getReviews)
+router.post('/products/:productId/reviews', requireAuth, addReview)
+router.delete('/products/:productId/reviews/:reviewId', requireAuth, deleteReview)
 
 // ── Cart ──────────────────────────────────────────────────
-router.get('/cart',               requireAuth, getCart)
-router.post('/cart',              requireAuth, addToCart)
-router.delete('/cart/:itemId',    requireAuth, removeFromCart)
+router.get('/cart', requireAuth, getCart)
+router.post('/cart', requireAuth, addToCart)
+router.delete('/cart/:itemId', requireAuth, removeFromCart)
 
 // ── Wishlist ──────────────────────────────────────────────
-router.get('/wishlist',           requireAuth, getWishlist)
-router.post('/wishlist',          requireAuth, addToWishlist)
+router.get('/wishlist', requireAuth, getWishlist)
+router.post('/wishlist', requireAuth, addToWishlist)
 
 // ── Orders ────────────────────────────────────────────────
-router.post('/orders',            requireAuth, createOrder)
-router.get('/orders',             requireAuth, getUserOrders)
-router.get('/orders/:id',         requireAuth, getOrder)
-
-// ── Orders — admin only ───────────────────────────────────
-router.get('/admin/orders',       requireAdmin, getAllOrders)
+router.post('/orders', requireAuth, createOrder)
+router.get('/orders', requireAuth, getUserOrders)
+router.get('/orders/:id', requireAuth, getOrder)
+router.get('/admin/orders', requireAdmin, getAllOrders)
 router.put('/admin/orders/:id/status', requireAdmin, updateOrderStatus)
+
+// ── Payments ─────────────────────────────────────────────
+router.post('/stripe/create-session', requireAuth, createStripeSession)
+router.post('/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhook)
+router.post('/esewa/initiate', requireAuth, initiateEsewa)
+router.get('/esewa/success', esewaSuccess)
 
 module.exports = router
