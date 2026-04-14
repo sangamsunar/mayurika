@@ -226,7 +226,7 @@ function Cart() {
 
             <button
               className="w-full mt-6 bg-black text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition text-sm"
-              onClick={() => toast('Checkout coming soon!')}
+              onClick={() => navigate('/checkout')}
             >
               Proceed to Checkout
             </button>

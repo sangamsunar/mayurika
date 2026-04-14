@@ -3,17 +3,26 @@ const Product = require('../models/product')
 // Get all products
 const getProducts = async (req, res) => {
     try {
-        const { category, style, gender, ageGroup, inStock } = req.query
-
-        // Build filter object based on query params
+        const { category, style, gender, ageGroup, inStock, metal, search } = req.query
         const filter = {}
+
         if (category) filter.category = category
         if (style) filter['style.type'] = style
         if (gender) filter.gender = gender
         if (ageGroup) filter.ageGroup = ageGroup
         if (inStock) filter.inStock = inStock === 'true'
+        if (metal) filter.metalOptions = { $in: [metal] }
 
-        const products = await Product.find(filter)
+        // Text search on name and description
+        if (search) {
+            filter.$or = [
+                { name: { $regex: search, $options: 'i' } },
+                { description: { $regex: search, $options: 'i' } },
+                { category: { $regex: search, $options: 'i' } },
+            ]
+        }
+
+        const products = await Product.find(filter).sort({ createdAt: -1 })
         res.json(products)
     } catch (error) {
         console.log(error)
