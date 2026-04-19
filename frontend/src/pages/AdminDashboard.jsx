@@ -3,6 +3,7 @@ import axios from 'axios'
 import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import { UserContext } from '../../context/userContext'
+import AdminAnalytics from './AdminAnalytics'
 
 const EMPTY_FORM = {
   name: '', description: '', category: '', gender: '', ageGroup: 'adult',
@@ -30,9 +31,10 @@ export default function AdminDashboard() {
   const { user } = useContext(UserContext)
   const navigate = useNavigate()
 
-  const [tab, setTab] = useState('products')
+  const [tab, setTab] = useState('analytics')
   const [products, setProducts] = useState([])
   const [orders, setOrders] = useState([])
+  const [customers, setCustomers] = useState([])
   const [goldRate, setGoldRate] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [images, setImages] = useState([])
@@ -51,6 +53,7 @@ export default function AdminDashboard() {
     fetchProducts()
     fetchGoldRate()
     fetchOrders()
+    fetchCustomers()
   }, [])
 
   const fetchProducts = async () => {
@@ -64,6 +67,10 @@ export default function AdminDashboard() {
   const fetchOrders = async () => {
     const { data } = await axios.get('/admin/orders')
     if (!data.error) setOrders(data)
+  }
+  const fetchCustomers = async () => {
+    const { data } = await axios.get('/admin/customers')
+    if (!data.error) setCustomers(data)
   }
 
   const handleScrape = async () => {
@@ -157,10 +164,10 @@ export default function AdminDashboard() {
         <span className="text-sm text-gray-500">Welcome, {user?.name}</span>
       </div>
 
-      <div className="bg-white border-b px-8 flex gap-6">
-        {['products', 'add', 'orders', 'gold rate'].map(t => (
+      <div className="bg-white border-b px-8 flex gap-6 overflow-x-auto">
+        {['analytics', 'products', 'add', 'orders', 'customers', 'gold rate'].map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`py-3 text-sm font-medium uppercase tracking-wide border-b-2 transition-colors ${tab === t ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+            className={`py-3 text-sm font-medium uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap ${tab === t ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
             {t === 'add' ? (editingId ? 'Edit Product' : 'Add Product') : t}
             {t === 'orders' && orders.filter(o => o.status === 'working').length > 0 && (
               <span className="ml-1.5 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{orders.filter(o => o.status === 'working').length}</span>
@@ -168,6 +175,9 @@ export default function AdminDashboard() {
           </button>
         ))}
       </div>
+
+      {/* ANALYTICS TAB — full-width, outside max-w container */}
+      {tab === 'analytics' && <AdminAnalytics />}
 
       <div className="px-8 py-6 max-w-6xl mx-auto">
 
@@ -445,6 +455,59 @@ export default function AdminDashboard() {
                         <td className="px-4 py-3 text-xs text-gray-400">{new Date(order.createdAt).toLocaleDateString()}</td>
                         <td className="px-4 py-3">
                           <button onClick={() => setSelectedOrder(order)} className="text-xs px-3 py-1 border rounded hover:bg-gray-100">Manage</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CUSTOMERS TAB */}
+        {tab === 'customers' && (
+          <div>
+            <h2 className="font-semibold text-lg mb-4">All Customers ({customers.length})</h2>
+            {customers.length === 0 ? (
+              <div className="text-center py-20 text-gray-400">No customers yet.</div>
+            ) : (
+              <div className="bg-white rounded border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      {['Name', 'Email', 'Phone', 'Gender', 'Orders', 'Total Spent', 'Joined', 'Status'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customers.map((c, i) => (
+                      <tr key={c._id} className={`border-b hover:bg-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-black text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                              {c.name?.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="font-medium text-xs">{c.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-500">{c.email}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500">{c.phone || '—'}</td>
+                        <td className="px-4 py-3 text-xs capitalize text-gray-500">
+                          {c.gender ? c.gender.replace('_', ' ') : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-xs font-semibold">{c.orderCount}</td>
+                        <td className="px-4 py-3 text-xs font-semibold">
+                          {c.totalSpent > 0 ? `Rs ${c.totalSpent.toLocaleString()}` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-400">
+                          {new Date(c.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${c.isVerified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                            {c.isVerified ? 'Verified' : 'Unverified'}
+                          </span>
                         </td>
                       </tr>
                     ))}

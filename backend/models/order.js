@@ -64,7 +64,7 @@ const orderSchema = new Schema({
         default: 'pending'
     },
     advancePaid:    { type: Number, default: 0 },
-    paymentMethod:  { type: String, enum: ['esewa', 'khalti', 'cod', 'pickup_cash'] },
+    paymentMethod:  { type: String, enum: ['esewa', 'khalti', 'stripe', 'cod', 'pickup_cash'] },
 
     // Gold rate snapshot at time of order
     goldRateSnapshot: {
@@ -87,7 +87,10 @@ const orderSchema = new Schema({
         }
     ],
 
-    notes: { type: String, default: '' }
+    notes: { type: String, default: '' },
+
+    // Internal metadata (e.g. eSewa transaction UUID)
+    metadata: { type: mongoose.Schema.Types.Mixed, default: {} }
 
 }, { timestamps: true })
 

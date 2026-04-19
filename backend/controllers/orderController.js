@@ -14,6 +14,48 @@ const transporter = nodemailer.createTransport({
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
 })
 
+const STATUS_LABELS = {
+    working:          'Being Made',
+    finishing:        'Finishing Touches',
+    packaging:        'Packaging',
+    transit:          'On the Way',
+    ready_for_pickup: 'Ready for Pickup',
+    delivered:        'Delivered',
+    cancelled:        'Cancelled',
+}
+
+const sendStatusEmail = async (email, name, order, newStatus) => {
+    const label = STATUS_LABELS[newStatus] || newStatus
+    const isDelivered = newStatus === 'delivered'
+    const isCancelled = newStatus === 'cancelled'
+    const emoji = isDelivered ? '🎉' : isCancelled ? '❌' : '📦'
+
+    await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: `Order Update: ${label} — Maryurika #${order._id.toString().slice(-6).toUpperCase()}`,
+        html: `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px">
+            <h1 style="font-size:22px;font-weight:bold;letter-spacing:2px;text-align:center">MARYURIKA</h1>
+            <hr style="margin:16px 0"/>
+            <h2 style="font-size:18px">${emoji} Your order is now: <strong>${label}</strong></h2>
+            <p style="color:#666">Hi ${name}, here's an update on your order:</p>
+            <div style="background:#f9f9f9;border-radius:8px;padding:16px;margin:20px 0">
+                <p style="margin:0;font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px">Order ID</p>
+                <p style="margin:4px 0 0;font-weight:bold;font-family:monospace">#${order._id.toString().slice(-8).toUpperCase()}</p>
+            </div>
+            ${isDelivered ? '<p style="color:#16a34a;font-weight:bold">Your jewellery has been delivered! We hope you love it. 💛</p>' : ''}
+            ${isCancelled ? '<p style="color:#dc2626">Your order has been cancelled. If you have questions, please contact us.</p>' : ''}
+            ${newStatus === 'transit' ? '<p style="color:#666">Your order is on its way! Please be available to receive it.</p>' : ''}
+            ${newStatus === 'ready_for_pickup' ? '<p style="color:#666">Your order is ready! Please visit our store to collect it at your convenience.</p>' : ''}
+            <p style="color:#999;font-size:12px;margin-top:24px">You can track your full order history in your profile.</p>
+            <hr style="margin:20px 0"/>
+            <p style="text-align:center;color:#bbb;font-size:11px">Maryurika Jewellery · Kathmandu, Nepal</p>
+        </div>
+        `
+    })
+}
+
 const sendOrderConfirmation = async (email, name, order) => {
     const itemRows = order.items.map(item => `
         <tr>
@@ -143,7 +185,7 @@ const createOrder = async (req, res) => {
             deliveryCharge: deliveryType === 'pickup' ? 0 : deliveryCharge,
             measurements: measurements || {},
             subtotal, tax, totalBeforeDelivery, grandTotal,
-            paymentStatus: deliveryType === 'online' ? 'fully_paid' : 'advance_paid',
+            paymentStatus: deliveryType === 'online' ? 'pending' : 'advance_paid',
             advancePaid,
             paymentMethod,
             goldRateSnapshot: {
@@ -217,11 +259,21 @@ const getAllOrders = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
     try {
         const { status, note } = req.body
-        const order = await Order.findById(req.params.id)
+        const order = await Order.findById(req.params.id).populate('user', 'name email')
         if (!order) return res.json({ error: 'Order not found' })
         order.status = status
         order.statusHistory.push({ status, note: note || '' })
         await order.save()
+
+        // Send status notification email (non-critical)
+        try {
+            if (order.user?.email) {
+                await sendStatusEmail(order.user.email, order.user.name, order, status)
+            }
+        } catch (emailErr) {
+            console.log('Status email failed (non-critical):', emailErr.message)
+        }
+
         res.json({ message: 'Status updated', order })
     } catch (error) {
         console.log(error)
@@ -229,4 +281,51 @@ const updateOrderStatus = async (req, res) => {
     }
 }
 
-module.exports = { createOrder, getUserOrders, getOrder, getAllOrders, updateOrderStatus }
+const cancelOrder = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id).populate('user', 'name email')
+        if (!order) return res.json({ error: 'Order not found' })
+        if (order.user._id.toString() !== req.user.id) return res.json({ error: 'Not authorized' })
+        if (!['working', 'finishing'].includes(order.status)) {
+            return res.json({ error: 'Order cannot be cancelled at this stage' })
+        }
+        order.status = 'cancelled'
+        order.statusHistory.push({ status: 'cancelled', note: 'Cancelled by customer' })
+        await order.save()
+
+        try {
+            await sendStatusEmail(order.user.email, order.user.name, order, 'cancelled')
+        } catch (e) {
+            console.log('Cancel email failed (non-critical):', e.message)
+        }
+
+        res.json({ message: 'Order cancelled successfully', order })
+    } catch (error) {
+        console.log(error)
+        res.json({ error: 'Something went wrong' })
+    }
+}
+
+const getAdminCustomers = async (req, res) => {
+    try {
+        const users = await require('../models/user').find()
+            .select('-password -resetOtp -otpExpiry -verifyOtp -verifyOtpExpiry')
+            .sort({ createdAt: -1 })
+        const orderCounts = await Order.aggregate([
+            { $group: { _id: '$user', count: { $sum: 1 }, total: { $sum: '$grandTotal' } } }
+        ])
+        const orderMap = {}
+        orderCounts.forEach(o => { orderMap[o._id.toString()] = { count: o.count, total: o.total } })
+        const result = users.map(u => ({
+            ...u.toObject(),
+            orderCount: orderMap[u._id.toString()]?.count || 0,
+            totalSpent: orderMap[u._id.toString()]?.total || 0
+        }))
+        res.json(result)
+    } catch (error) {
+        console.log(error)
+        res.json({ error: 'Something went wrong' })
+    }
+}
+
+module.exports = { createOrder, getUserOrders, getOrder, getAllOrders, updateOrderStatus, cancelOrder, getAdminCustomers }

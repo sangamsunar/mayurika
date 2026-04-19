@@ -22,6 +22,27 @@ const userSchema = new Schema({
     verifyOtp: String,
     verifyOtpExpiry: Date,
 
+    // Avatar
+    avatar:      { type: String, default: '' }, // path like /uploads/avatars/...
+
+    // Profile details
+    phone:       { type: String, default: '' },
+    gender:      { type: String, enum: ['male', 'female', 'other', 'prefer_not_to_say', ''], default: '' },
+    dateOfBirth: { type: Date, default: null },
+
+    // Saved addresses
+    addresses: [
+        {
+            label:    { type: String, default: 'Home' },
+            fullName: String,
+            phone:    String,
+            address:  String,
+            city:     String,
+            district: String,
+            isDefault: { type: Boolean, default: false }
+        }
+    ],
+
     // Size profile
     sizeProfile: {
         finger:      { type: Number, default: null }, // circumference in mm

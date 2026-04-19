@@ -14,10 +14,12 @@
     "@react-three/fiber": "^9.5.0",
     "@tailwindcss/vite": "^4.1.17",
     "axios": "^1.14.0",
+    "framer-motion": "^12.38.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.9.6",
+    "recharts": "^3.8.1",
     "tailwindcss": "^4.1.17",
     "three": "^0.183.2"
   },

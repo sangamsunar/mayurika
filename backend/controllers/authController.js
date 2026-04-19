@@ -11,7 +11,7 @@ const test = (req, res) => {
 // Register Endpoint
 const registerUser = async (req, res) => {
     try {
-        const { name, email, password } = req.body
+        const { name, email, password, phone, gender } = req.body
 
         if (!name) return res.json({ error: 'Name is required' })
         if (!password || password.length < 6) return res.json({ error: 'Password must be at least 6 characters' })
@@ -27,11 +27,11 @@ const registerUser = async (req, res) => {
         const otp = crypto.randomInt(100000, 999999).toString()
         const verifyOtpExpiry = new Date(Date.now() + 10 * 60 * 1000) // 10 mins
 
-        // If user exists but not verified, update their record
-        // Otherwise create a new one
         if (exist && !exist.isVerified) {
             exist.name = name
             exist.password = hashedPassword
+            exist.phone = phone || ''
+            exist.gender = gender || ''
             exist.verifyOtp = otp
             exist.verifyOtpExpiry = verifyOtpExpiry
             await exist.save()
@@ -39,12 +39,14 @@ const registerUser = async (req, res) => {
             await User.create({
                 name, email,
                 password: hashedPassword,
+                phone: phone || '',
+                gender: gender || '',
                 verifyOtp: otp,
                 verifyOtpExpiry
             })
         }
 
-        await sendOtpEmail(email, otp, 'verify') // 'verify' flag explained in Step 3
+        await sendOtpEmail(email, otp, 'verify')
         res.json({ message: 'OTP sent to your email. Please verify.' })
 
     } catch (error) {
@@ -197,11 +199,92 @@ const getProfile = (req, res) => {
     }
 }
 
+const getFullProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select('-password -resetOtp -otpExpiry -verifyOtp -verifyOtpExpiry')
+        if (!user) return res.json({ error: 'User not found' })
+        res.json(user)
+    } catch (error) {
+        console.log(error)
+        res.json({ error: 'Something went wrong' })
+    }
+}
+
+const updateProfile = async (req, res) => {
+    try {
+        const { name, phone, gender, dateOfBirth } = req.body
+        const updates = {}
+        if (name !== undefined) updates.name = name
+        if (phone !== undefined) updates.phone = phone
+        if (gender !== undefined) updates.gender = gender
+        if (dateOfBirth !== undefined) updates.dateOfBirth = dateOfBirth || null
+        const user = await User.findByIdAndUpdate(req.user.id, updates, { new: true })
+            .select('-password -resetOtp -otpExpiry -verifyOtp -verifyOtpExpiry')
+        res.json({ message: 'Profile updated', user })
+    } catch (error) {
+        console.log(error)
+        res.json({ error: 'Something went wrong' })
+    }
+}
+
+const saveAddress = async (req, res) => {
+    try {
+        const { label, fullName, phone, address, city, district, isDefault, addressId } = req.body
+        const user = await User.findById(req.user.id)
+        if (!user) return res.json({ error: 'User not found' })
+
+        if (isDefault) {
+            user.addresses.forEach(a => { a.isDefault = false })
+        }
+
+        if (addressId) {
+            const idx = user.addresses.findIndex(a => a._id.toString() === addressId)
+            if (idx !== -1) {
+                user.addresses[idx] = { ...user.addresses[idx].toObject(), label, fullName, phone, address, city, district, isDefault: !!isDefault, _id: user.addresses[idx]._id }
+            }
+        } else {
+            user.addresses.push({ label, fullName, phone, address, city, district, isDefault: !!isDefault })
+        }
+
+        await user.save()
+        res.json({ message: 'Address saved', addresses: user.addresses })
+    } catch (error) {
+        console.log(error)
+        res.json({ error: 'Something went wrong' })
+    }
+}
+
+const deleteAddress = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id)
+        if (!user) return res.json({ error: 'User not found' })
+        user.addresses = user.addresses.filter(a => a._id.toString() !== req.params.addressId)
+        await user.save()
+        res.json({ message: 'Address deleted', addresses: user.addresses })
+    } catch (error) {
+        console.log(error)
+        res.json({ error: 'Something went wrong' })
+    }
+}
+
 const getSizeProfile = async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('sizeProfile name email')
         if (!user) return res.json({ error: 'User not found' })
         res.json(user)
+    } catch (error) {
+        console.log(error)
+        res.json({ error: 'Something went wrong' })
+    }
+}
+
+const uploadAvatar = async (req, res) => {
+    try {
+        if (!req.file) return res.json({ error: 'No file uploaded' })
+        const avatarPath = `/uploads/avatars/${req.file.filename}`
+        const user = await User.findByIdAndUpdate(req.user.id, { avatar: avatarPath }, { new: true })
+            .select('-password -resetOtp -otpExpiry -verifyOtp -verifyOtpExpiry')
+        res.json({ message: 'Avatar updated', avatar: avatarPath, user })
     } catch (error) {
         console.log(error)
         res.json({ error: 'Something went wrong' })
@@ -231,6 +314,7 @@ const updateSizeProfile = async (req, res) => {
     }
 }
 module.exports = {
-    test, registerUser, loginUser, getProfile,
-    forgotPassword, verifyOtp, resetPassword, verifyEmail, logout, getSizeProfile, updateSizeProfile
+    test, registerUser, loginUser, getProfile, getFullProfile, updateProfile, uploadAvatar,
+    forgotPassword, verifyOtp, resetPassword, verifyEmail, logout,
+    getSizeProfile, updateSizeProfile, saveAddress, deleteAddress
 }

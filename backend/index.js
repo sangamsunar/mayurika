@@ -6,6 +6,7 @@ dns.setServers(['8.8.8.8', '1.1.1.1']);
 const express = require('express');
 const dotenv = require('dotenv').config();
 const cors = require('cors')
+const helmet = require('helmet')
 const mongoose = require('mongoose')
 const app = express()
 const cookieParser = require('cookie-parser')
@@ -44,6 +45,9 @@ app.use('/uploads', (req, res, next) => {
     res.header('Access-Control-Allow-Methods', 'GET')
     next()
 }, express.static('uploads'))
+
+// Security
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 
 // Middleware
 app.use(express.json({ limit: '200mb' }))
