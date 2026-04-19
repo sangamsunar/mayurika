@@ -22,7 +22,7 @@ const {
   TabStopPosition, Table, TableRow, TableCell, WidthType, BorderStyle,
   ShadingType, convertInchesToTwip, UnderlineType, LineRuleType,
   ImageRun,
-} = require('d:/Web Development/mayurika/node_modules/docx');
+} = require('./backend/node_modules/docx');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 const FONT = 'Arial';
