@@ -1,5 +1,6 @@
 backend/.env
 backend/uploads/models/*.glb
 backend/uploads/models/
-.claude
-.playwright-tests
+
+.claude/
+playwright-tests/
