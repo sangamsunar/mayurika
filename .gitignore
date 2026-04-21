@@ -3,7 +3,7 @@ backend/uploads/models/*.glb
 backend/uploads/models/
 backend/uploads/images/*.png
 backend/uploads/images/
-
+backend/node_modules/
 
 .claude/
 playwright-tests/
