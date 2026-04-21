@@ -1,2 +1,3 @@
 backend/.env
 backend/uploads/models/*.glb
+backend/uploads/models/
