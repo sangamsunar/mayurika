@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from './pages/Home';
-import Women from './pages/Women';
+import Women from './pages/Women'
+import Unisex from './pages/Unisex';
 import Men from './pages/Men';
 import Navbar from "./components/Navbar";
 import Cart from "./pages/Cart";
@@ -11,6 +12,7 @@ import { Login } from "./pages/Login.jsx"
 import { Register } from "./pages/Register.jsx"
 import { Toaster } from 'react-hot-toast'
 import { UserContextProvider } from "../context/userContext.jsx";
+import { WishlistContextProvider } from "../context/wishlistContext.jsx";
 import { ForgotPassword } from './pages/ForgotPassword'
 import { VerifyOtp } from './pages/VerifyOtp'
 import { ResetPassword } from './pages/ResetPassword'
@@ -25,6 +27,7 @@ import OrderSuccess from './pages/OrderSuccess'
 import About from './pages/About'
 import ReturnPolicy from './pages/ReturnPolicy'
 import NotFound from './pages/NotFound'
+import ChatBot from './components/ChatBot'
 
 axios.defaults.baseURL = 'http://localhost:8000';
 axios.defaults.withCredentials = true
@@ -32,6 +35,7 @@ axios.defaults.withCredentials = true
 function App() {
   return (
     <UserContextProvider>
+      <WishlistContextProvider>
       <BrowserRouter>
         <Navbar />
         <Toaster position="bottom-right" toastOptions={{ duration: 2000 }} />
@@ -40,6 +44,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/men" element={<Men />} />
           <Route path="/women" element={<Women />} />
+          <Route path="/unisex" element={<Unisex />} />
           <Route path="/search" element={<Search />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/about" element={<About />} />
@@ -65,7 +70,9 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Footer />
+        <ChatBot />
       </BrowserRouter>
+      </WishlistContextProvider>
     </UserContextProvider>
   );
 }

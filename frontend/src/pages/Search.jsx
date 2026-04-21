@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import { toast } from 'react-hot-toast'
 import ProductCard from '../components/ProductCard'
 import { useSearchParams } from 'react-router-dom'
 
 const CATEGORIES = ['all', 'ring', 'necklace', 'bracelet', 'earring', 'anklet', 'chain', 'cufflink', 'tayo', 'tilhari', 'churra', 'pote', 'kantha', 'set']
 const STYLES     = ['all', 'traditional', 'wedding', 'casual', 'youth']
 const GENDERS    = ['all', 'female', 'male', 'unisex']
-const METALS     = ['all', 'gold', 'silver', 'roseGold']
+const METALS     = ['all', 'gold', 'silver']
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -43,8 +44,8 @@ export default function Search() {
 
       // Update URL params
       setSearchParams(params)
-    } catch (error) {
-      console.log(error)
+    } catch {
+      toast.error('Could not load results')
     }
     setLoading(false)
   }

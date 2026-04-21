@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Test Cases – Mayurika Jewellery</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 12pt;
+      color: #000;
+      background: #fff;
+      padding: 40px 80px;
+      max-width: 900px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* Header bar */
+    .doc-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10pt;
+      border-bottom: 1px solid #000;
+      padding-bottom: 6px;
+      margin-bottom: 30px;
+    }
+
+    /* Section title */
+    h2 {
+      font-size: 14pt;
+      font-weight: bold;
+      margin: 30px 0 6px;
+    }
+
+    h3 {
+      font-size: 12pt;
+      font-weight: bold;
+      margin: 20px 0 8px;
+    }
+
+    /* Bullet operations */
+    .operation-title {
+      font-size: 12pt;
+      margin: 20px 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .operation-title::before {
+      content: "•";
+      font-size: 16pt;
+    }
+
+    /* Figure placeholder box */
+    .figure-box {
+      border: 1px solid #aaa;
+      background: #f5f5f5;
+      width: 100%;
+      height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+      font-size: 10pt;
+      margin: 10px 0 4px;
+    }
+
+    .figure-caption {
+      text-align: center;
+      font-style: italic;
+      color: #1a55af;
+      font-size: 10pt;
+      margin-bottom: 16px;
+    }
+
+    /* Summary table */
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+    }
+
+    .summary-table td {
+      border: 1px solid #000;
+      padding: 10px 14px;
+      vertical-align: top;
+      font-size: 11pt;
+    }
+
+    .summary-table td:first-child {
+      font-weight: bold;
+      width: 28%;
+      background: #fff;
+    }
+
+    .summary-table ul {
+      padding-left: 18px;
+      margin: 0;
+    }
+
+    .summary-table ul li {
+      margin-bottom: 4px;
+    }
+
+    .test-result {
+      font-weight: bold;
+    }
+
+    /* Page number */
+    .page-number {
+      text-align: right;
+      font-size: 10pt;
+      margin-top: 60px;
+      border-top: 1px solid #000;
+      padding-top: 6px;
+    }
+
+    @media print {
+      body { padding: 20px 40px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Document Header -->
+  <div class="doc-header">
+    <span>CS6P05NP</span>
+    <span>Final Year Project</span>
+  </div>
+
+  <!-- Section Heading -->
+  <h2>7. Testing</h2>
+
+  <p>
+    Testing is the process of evaluating a system or component to detect any discrepancies
+    between expected and actual results. For Mayurika Jewellery, testing ensures that all
+    user-facing features — from authentication to checkout — function correctly and reliably
+    before deployment.
+  </p>
+
+  <h2>7.1. User Panel Testing</h2>
+  <h3>7.1.1 User Login &amp; Authentication</h3>
+
+  <!-- OPERATION 1: Login with valid credentials -->
+  <div class="operation-title">Logging in with valid credentials</div>
+
+  <div class="figure-box">[Screenshot: Login page with email and password fields filled]</div>
+  <p class="figure-caption">Figure 1: Login form with valid credentials entered</p>
+
+  <div class="figure-box">[Screenshot: Home page after successful login — navbar shows user name and cart icon]</div>
+  <p class="figure-caption">Figure 2: Successful login — user redirected to Home page</p>
+
+  <!-- OPERATION 2: Login with wrong password -->
+  <div class="operation-title">Attempting login with incorrect password</div>
+
+  <div class="figure-box">[Screenshot: Login form with wrong password entered]</div>
+  <p class="figure-caption">Figure 3: Login attempted with incorrect password</p>
+
+  <div class="figure-box">[Screenshot: Error toast — "Invalid email or password"]</div>
+  <p class="figure-caption">Figure 4: Error message displayed for invalid credentials</p>
+
+  <!-- OPERATION 3: Login with empty fields -->
+  <div class="operation-title">Attempting login with empty fields</div>
+
+  <div class="figure-box">[Screenshot: Login form with both fields empty, validation messages shown]</div>
+  <p class="figure-caption">Figure 5: Client-side validation — empty field warnings displayed</p>
+
+  <div class="figure-box">[Screenshot: Fields highlighted in red with "Email is required" and "Password is required"]</div>
+  <p class="figure-caption">Figure 6: Inline validation errors for empty email and password</p>
+
+  <!-- Summary Table -->
+  <table class="summary-table">
+    <tr>
+      <td>Test Name</td>
+      <td>User Login and Authentication</td>
+    </tr>
+    <tr>
+      <td>Input</td>
+      <td>
+        <ul>
+          <li>Login with valid email (<em>testuser@gmail.com</em>) and correct password</li>
+          <li>Login with valid email but incorrect password</li>
+          <li>Login with both email and password fields left empty</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>Description</td>
+      <td>
+        Testing the login form on Mayurika Jewellery to verify that valid credentials grant
+        access, invalid credentials are rejected with a clear error message, and empty fields
+        trigger client-side validation warnings before any server request is made.
+      </td>
+    </tr>
+    <tr>
+      <td>Expected Output</td>
+      <td>
+        <ul>
+          <li>Valid credentials: user is redirected to the Home page with their name shown in the navbar</li>
+          <li>Incorrect password: error toast "Invalid email or password" is displayed</li>
+          <li>Empty fields: inline validation messages "Email is required" and "Password is required" appear</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>Actual Output</td>
+      <td>
+        <ul>
+          <li>Valid credentials: user successfully logged in and redirected to Home page.</li>
+          <li>Incorrect password: error toast displayed as expected.</li>
+          <li>Empty fields: validation messages appeared without sending any server request.</li>
+        </ul>
+        <span class="test-result">Test Case Successful.</span>
+      </td>
+    </tr>
+  </table>
+
+  <div class="page-number">1</div>
+
+</body>
+</html>

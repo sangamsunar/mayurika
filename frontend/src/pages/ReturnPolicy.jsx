@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { AlertTriangleIcon, MessageCircleIcon } from '../components/Icons'
 
 export default function ReturnPolicy() {
   return (
@@ -11,7 +12,10 @@ export default function ReturnPolicy() {
       <div className="max-w-3xl mx-auto px-8 py-12 space-y-10">
 
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-5">
-          <p className="font-semibold text-yellow-800 mb-1">⚠️ Important Note</p>
+          <p className="flex items-center gap-2 font-semibold text-yellow-800 mb-1">
+            <AlertTriangleIcon size={15} strokeWidth={2} className="text-yellow-600 flex-shrink-0" />
+            Important Note
+          </p>
           <p className="text-sm text-yellow-700 leading-relaxed">
             Because all Maryurika jewellery is <strong>made to order</strong> based on your selected metal, purity, and measurements, we follow a specific return policy. Please read carefully before placing your order.
           </p>
@@ -94,7 +98,7 @@ export default function ReturnPolicy() {
           <p className="text-gray-400 text-sm mb-5">We're here to help. Reach out on WhatsApp for the fastest response.</p>
           <a href="https://wa.me/9779702296671" target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-2 bg-green-500 text-white px-6 py-2.5 rounded-lg font-semibold text-sm hover:bg-green-600 transition">
-            💬 Contact on WhatsApp
+            <MessageCircleIcon size={16} /> Contact on WhatsApp
           </a>
         </div>
 

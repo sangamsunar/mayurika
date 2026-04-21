@@ -1,24 +1,32 @@
 import { useContext } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { UserContext } from '../../context/userContext'
 
-// For logged in users only
 export const ProtectedRoute = ({ children }) => {
-    const { user, loading } = useContext(UserContext)
+  const { user, loading } = useContext(UserContext)
+  const location = useLocation()
 
-    if (loading) return <div>Loading...</div>
-    if (!user) return <Navigate to="/login" />
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-7 h-7 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin" />
+    </div>
+  )
+  if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />
 
-    return children
+  return children
 }
 
-// For admins only
 export const AdminRoute = ({ children }) => {
-    const { user, loading } = useContext(UserContext)
+  const { user, loading } = useContext(UserContext)
+  const location = useLocation()
 
-    if (loading) return <div>Loading...</div>
-    if (!user) return <Navigate to="/login" />
-    if (user.role !== 'admin') return <Navigate to="/" />
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-7 h-7 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin" />
+    </div>
+  )
+  if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />
+  if (user.role !== 'admin') return <Navigate to="/" replace />
 
-    return children
+  return children
 }

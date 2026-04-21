@@ -40,9 +40,19 @@ mongoose.connect(process.env.MONGO_URL)
     .catch((err) => console.log('Database not connected', err))
 
 
+// GLB/3D model files: long cache (7 days) — filenames include timestamps so safe
+app.use('/uploads/models', (req, res, next) => {
+    res.header('Access-Control-Allow-Origin', 'http://localhost:5173')
+    res.header('Access-Control-Allow-Methods', 'GET')
+    res.header('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400')
+    next()
+}, express.static('uploads/models'))
+
+// Other uploads (images): moderate cache (1 day)
 app.use('/uploads', (req, res, next) => {
     res.header('Access-Control-Allow-Origin', 'http://localhost:5173')
     res.header('Access-Control-Allow-Methods', 'GET')
+    res.header('Cache-Control', 'public, max-age=86400')
     next()
 }, express.static('uploads'))
 
@@ -53,12 +63,6 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 app.use(express.json({ limit: '200mb' }))
 app.use(cookieParser())
 app.use(express.urlencoded({ extended: false, limit: '200mb' }))
-
-app.use('/uploads', (req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'http://localhost:5173')
-    res.header('Access-Control-Allow-Methods', 'GET')
-    next()
-}, express.static('uploads'))
 
 app.use('/', require('./routes/authRoutes'))
 

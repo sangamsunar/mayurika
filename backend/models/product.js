@@ -43,7 +43,7 @@ const productSchema = new Schema({
     },
     metalOptions: [{
         type: String,
-        enum: ['gold', 'silver', 'roseGold'],
+        enum: ['gold', 'silver'],
     }],
     purityOptions: {
         gold: [{

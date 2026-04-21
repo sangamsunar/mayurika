@@ -13,6 +13,7 @@ const { getReviews, addReview, deleteReview } = require('../controllers/reviewCo
 const { createStripeSession, verifyStripeSession, stripeWebhook, initiateEsewa, esewaSuccess } = require('../controllers/paymentController')
 const { upload, avatarUpload } = require('../middleware/upload')
 const { getAnalytics } = require('../controllers/analyticsController')
+const { chat, getChatHistory } = require('../controllers/chatbotController')
 
 // Rate limiters
 const authLimiter = rateLimit({
@@ -100,5 +101,9 @@ router.post('/stripe/verify-session', requireAuth, verifyStripeSession)
 router.post('/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhook)
 router.post('/esewa/initiate', requireAuth, initiateEsewa)
 router.get('/esewa/success', esewaSuccess)
+
+// ── Chatbot ───────────────────────────────────────────────
+router.post('/api/chatbot/chat', chat)
+router.get('/api/chatbot/history/:sessionId', getChatHistory)
 
 module.exports = router

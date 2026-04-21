@@ -1,9 +1,10 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useRef, useContext } from 'react'
 import axios from 'axios'
 import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import { UserContext } from '../../context/userContext'
 import AdminAnalytics from './AdminAnalytics'
+import { ModelViewerDetail } from '../components/ModelViewer'
 
 const EMPTY_FORM = {
   name: '', description: '', category: '', gender: '', ageGroup: 'adult',
@@ -21,11 +22,24 @@ const STATUS_LABELS = {
   delivered: 'Delivered', cancelled: 'Cancelled'
 }
 const STATUS_COLORS = {
-  working: 'bg-blue-100 text-blue-700', finishing: 'bg-purple-100 text-purple-700',
-  packaging: 'bg-yellow-100 text-yellow-700', transit: 'bg-orange-100 text-orange-700',
-  ready_for_pickup: 'bg-green-100 text-green-700', delivered: 'bg-gray-100 text-gray-600',
-  cancelled: 'bg-red-100 text-red-600'
+  working:         'bg-blue-500/15   text-blue-400   border border-blue-500/25',
+  finishing:       'bg-purple-500/15 text-purple-400 border border-purple-500/25',
+  packaging:       'bg-yellow-500/15 text-yellow-400 border border-yellow-500/25',
+  transit:         'bg-orange-500/15 text-orange-400 border border-orange-500/25',
+  ready_for_pickup:'bg-teal-500/15   text-teal-400   border border-teal-500/25',
+  delivered:       'bg-[#C9A96E]/12  text-[#C9A96E]  border border-[#C9A96E]/25',
+  cancelled:       'bg-red-500/15    text-red-400    border border-red-500/25'
 }
+
+/* ── Shared style primitives ──────────────────────────────── */
+const inp = [
+  'w-full rounded-lg px-3 py-2.5 text-sm outline-none transition-all',
+  'bg-white/[0.04] border border-white/[0.08] text-[#F0EBE1]',
+  'placeholder:text-[rgba(240,235,225,0.25)]',
+  'focus:border-[rgba(201,169,110,0.45)] focus:bg-white/[0.06]',
+].join(' ')
+
+const lbl = 'block text-[10px] font-semibold text-[rgba(240,235,225,0.4)] mb-1.5 uppercase tracking-[0.15em]'
 
 export default function AdminDashboard() {
   const { user } = useContext(UserContext)
@@ -39,6 +53,8 @@ export default function AdminDashboard() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [images, setImages] = useState([])
   const [model, setModel] = useState(null)
+  const [modelPreviewUrl, setModelPreviewUrl] = useState(null)
+  const prevBlobUrl = useRef(null)
   const [editingId, setEditingId] = useState(null)
   const [loading, setLoading] = useState(false)
   const [manualRate, setManualRate] = useState({ fineGoldPerTola: '', silverPerTola: '', tejabiGoldPerTola: '' })
@@ -50,28 +66,13 @@ export default function AdminDashboard() {
   }, [user])
 
   useEffect(() => {
-    fetchProducts()
-    fetchGoldRate()
-    fetchOrders()
-    fetchCustomers()
+    fetchProducts(); fetchGoldRate(); fetchOrders(); fetchCustomers()
   }, [])
 
-  const fetchProducts = async () => {
-    const { data } = await axios.get('/products')
-    setProducts(data)
-  }
-  const fetchGoldRate = async () => {
-    const { data } = await axios.get('/gold-rate')
-    setGoldRate(data)
-  }
-  const fetchOrders = async () => {
-    const { data } = await axios.get('/admin/orders')
-    if (!data.error) setOrders(data)
-  }
-  const fetchCustomers = async () => {
-    const { data } = await axios.get('/admin/customers')
-    if (!data.error) setCustomers(data)
-  }
+  const fetchProducts  = async () => { const { data } = await axios.get('/products'); setProducts(data) }
+  const fetchGoldRate  = async () => { const { data } = await axios.get('/gold-rate'); setGoldRate(data) }
+  const fetchOrders    = async () => { const { data } = await axios.get('/admin/orders'); if (!data.error) setOrders(data) }
+  const fetchCustomers = async () => { const { data } = await axios.get('/admin/customers'); if (!data.error) setCustomers(data) }
 
   const handleScrape = async () => {
     setLoading(true)
@@ -88,8 +89,7 @@ export default function AdminDashboard() {
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault(); setLoading(true)
     const fd = new FormData()
     Object.entries(form).forEach(([key, val]) => {
       if (['metalOptions', 'purityGold', 'puritySilver', 'styleType', 'subStyle'].includes(key)) return
@@ -129,8 +129,9 @@ export default function AdminDashboard() {
       customizable: product.customizable, pickupAvailable: product.pickupAvailable,
       region: product.region, inStock: product.inStock
     })
-    setTab('add')
-    window.scrollTo(0, 0)
+    if (prevBlobUrl.current) { URL.revokeObjectURL(prevBlobUrl.current); prevBlobUrl.current = null }
+    setModelPreviewUrl(product.model3D ? `http://localhost:8000${product.model3D}` : null)
+    setTab('add'); window.scrollTo(0, 0)
   }
 
   const handleDelete = async (id) => {
@@ -143,83 +144,138 @@ export default function AdminDashboard() {
   const handleUpdateStatus = async (orderId, newStatus) => {
     const { data } = await axios.put(`/admin/orders/${orderId}/status`, { status: newStatus, note: statusNote })
     if (data.error) toast.error(data.error)
-    else {
-      toast.success('Status updated!')
-      fetchOrders()
-      setSelectedOrder(null)
-      setStatusNote('')
-    }
+    else { toast.success('Status updated!'); fetchOrders(); setSelectedOrder(null); setStatusNote('') }
   }
 
-  const resetForm = () => { setForm(EMPTY_FORM); setImages([]); setModel(null); setEditingId(null) }
+  const handleModelChange = (e) => {
+    const file = e.target.files[0]; if (!file) return
+    if (prevBlobUrl.current) URL.revokeObjectURL(prevBlobUrl.current)
+    const blobUrl = URL.createObjectURL(file)
+    prevBlobUrl.current = blobUrl; setModel(file); setModelPreviewUrl(blobUrl)
+  }
+
+  const resetForm = () => {
+    if (prevBlobUrl.current) { URL.revokeObjectURL(prevBlobUrl.current); prevBlobUrl.current = null }
+    setForm(EMPTY_FORM); setImages([]); setModel(null); setModelPreviewUrl(null); setEditingId(null)
+  }
   const toggle = (arr, val) => arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]
 
-  const inp = "w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
-  const lbl = "block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide"
+  const TABS = ['analytics', 'products', 'add', 'orders', 'customers', 'gold rate']
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b px-8 py-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold tracking-widest uppercase">Maryurika Admin</h1>
-        <span className="text-sm text-gray-500">Welcome, {user?.name}</span>
+    <div className="min-h-screen" style={{ background: '#04040A', color: '#F0EBE1' }}>
+
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div className="sticky top-0 z-40 px-8 py-4 flex justify-between items-center"
+        style={{ background: 'rgba(8,8,15,0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-0.5 h-6 rounded-full" style={{ background: 'linear-gradient(to bottom, #C9A96E, #0D9488)' }} />
+          <h1 className="font-display text-xl font-bold tracking-widest uppercase" style={{ color: '#F0EBE1' }}>
+            Maryurika Admin
+          </h1>
+        </div>
+        <span className="text-sm" style={{ color: 'rgba(240,235,225,0.4)' }}>
+          Welcome,{' '}
+          <span style={{ color: 'rgba(240,235,225,0.7)' }}>{user?.name}</span>
+        </span>
       </div>
 
-      <div className="bg-white border-b px-8 flex gap-6 overflow-x-auto">
-        {['analytics', 'products', 'add', 'orders', 'customers', 'gold rate'].map(t => (
+      {/* ── Tab Bar ────────────────────────────────────────────── */}
+      <div className="px-8 flex gap-1 overflow-x-auto no-scrollbar"
+        style={{ background: 'rgba(8,8,15,0.8)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+        {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`py-3 text-sm font-medium uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap ${tab === t ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+            className="relative py-3.5 px-4 text-[11px] font-semibold uppercase tracking-[0.15em] whitespace-nowrap transition-all duration-200 rounded-t-lg"
+            style={{
+              color: tab === t ? '#C9A96E' : 'rgba(240,235,225,0.35)',
+              background: tab === t ? 'rgba(201,169,110,0.06)' : 'transparent',
+              borderBottom: tab === t ? '2px solid #C9A96E' : '2px solid transparent',
+            }}>
             {t === 'add' ? (editingId ? 'Edit Product' : 'Add Product') : t}
             {t === 'orders' && orders.filter(o => o.status === 'working').length > 0 && (
-              <span className="ml-1.5 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{orders.filter(o => o.status === 'working').length}</span>
+              <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full"
+                style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.3)' }}>
+                {orders.filter(o => o.status === 'working').length}
+              </span>
             )}
           </button>
         ))}
       </div>
 
-      {/* ANALYTICS TAB — full-width, outside max-w container */}
+      {/* ── Analytics (full-width) ─────────────────────────────── */}
       {tab === 'analytics' && <AdminAnalytics />}
 
-      <div className="px-8 py-6 max-w-6xl mx-auto">
+      {/* ── Content Pane ───────────────────────────────────────── */}
+      <div className="px-8 py-7 max-w-6xl mx-auto">
 
         {/* PRODUCTS TAB */}
         {tab === 'products' && (
           <div>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-semibold text-lg">All Products ({products.length})</h2>
-              <button onClick={() => { resetForm(); setTab('add') }} className="bg-black text-white px-4 py-2 text-sm rounded hover:bg-gray-800">+ Add Product</button>
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <p className="text-[10px] tracking-[0.3em] uppercase mb-1" style={{ color: 'rgba(240,235,225,0.3)' }}>Catalogue</p>
+                <h2 className="font-display text-2xl font-semibold" style={{ color: '#F0EBE1' }}>
+                  All Products <span style={{ color: 'rgba(240,235,225,0.3)', fontSize: '1rem' }}>({products.length})</span>
+                </h2>
+              </div>
+              <button onClick={() => { resetForm(); setTab('add') }}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold tracking-wide transition-all"
+                style={{ background: '#C9A96E', color: '#04040A' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#E8D4A0'}
+                onMouseLeave={e => e.currentTarget.style.background = '#C9A96E'}>
+                + Add Product
+              </button>
             </div>
+
             {products.length === 0 ? (
-              <div className="text-center py-20 text-gray-400">No products yet.</div>
+              <div className="text-center py-24" style={{ color: 'rgba(240,235,225,0.28)' }}>No products yet.</div>
             ) : (
-              <div className="bg-white rounded border overflow-hidden">
+              <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)', background: '#08080F' }}>
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
+                  <thead style={{ background: '#0E0E18', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <tr>
                       {['Image', 'Name', 'Category', 'Gender', 'Style', 'Stock', 'Actions'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{h}</th>
+                        <th key={h} className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.15em]"
+                          style={{ color: 'rgba(240,235,225,0.35)' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {products.map((p, i) => (
-                      <tr key={p._id} className={`border-b hover:bg-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
+                      <tr key={p._id}
+                        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(201,169,110,0.03)'}
+                        onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)'}>
                         <td className="px-4 py-3">
                           {p.images?.[0]
-                            ? <img src={`http://localhost:8000${p.images[0]}`} className="w-10 h-10 object-cover rounded" />
-                            : <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400">N/A</div>}
+                            ? <img src={`http://localhost:8000${p.images[0]}`} className="w-10 h-10 object-cover rounded-lg" />
+                            : <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xs"
+                                style={{ background: '#141420', color: 'rgba(240,235,225,0.3)' }}>N/A</div>}
                         </td>
-                        <td className="px-4 py-3 font-medium">{p.name}</td>
-                        <td className="px-4 py-3 capitalize">{p.category}</td>
-                        <td className="px-4 py-3 capitalize">{p.gender}</td>
-                        <td className="px-4 py-3 capitalize">{p.style?.type}</td>
+                        <td className="px-4 py-3 font-medium" style={{ color: '#F0EBE1' }}>{p.name}</td>
+                        <td className="px-4 py-3 capitalize" style={{ color: 'rgba(240,235,225,0.55)' }}>{p.category}</td>
+                        <td className="px-4 py-3 capitalize" style={{ color: 'rgba(240,235,225,0.55)' }}>{p.gender}</td>
+                        <td className="px-4 py-3 capitalize" style={{ color: 'rgba(240,235,225,0.55)' }}>{p.style?.type}</td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${p.inStock ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${p.inStock ? 'bg-teal-500/15 text-teal-400 border border-teal-500/25' : 'bg-red-500/15 text-red-400 border border-red-500/25'}`}>
                             {p.inStock ? 'In Stock' : 'Out'}
                           </span>
                         </td>
                         <td className="px-4 py-3 flex gap-2">
-                          <button onClick={() => handleEdit(p)} className="text-xs px-3 py-1 border rounded hover:bg-gray-100">Edit</button>
-                          <button onClick={() => handleDelete(p._id)} className="text-xs px-3 py-1 border border-red-300 text-red-500 rounded hover:bg-red-50">Delete</button>
+                          <button onClick={() => handleEdit(p)}
+                            className="text-xs px-3 py-1.5 rounded-lg transition-all"
+                            style={{ border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(240,235,225,0.6)' }}
+                            onMouseEnter={e => { e.currentTarget.style.border = '1px solid rgba(201,169,110,0.4)'; e.currentTarget.style.color = '#C9A96E' }}
+                            onMouseLeave={e => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'rgba(240,235,225,0.6)' }}>
+                            Edit
+                          </button>
+                          <button onClick={() => handleDelete(p._id)}
+                            className="text-xs px-3 py-1.5 rounded-lg transition-all"
+                            style={{ border: '1px solid rgba(239,68,68,0.2)', color: 'rgba(248,113,113,0.7)' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.color = '#F87171' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(248,113,113,0.7)' }}>
+                            Delete
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -232,66 +288,112 @@ export default function AdminDashboard() {
 
         {/* ADD/EDIT PRODUCT TAB */}
         {tab === 'add' && (
-          <form onSubmit={handleSubmit} className="bg-white rounded border p-6 space-y-6">
+          <form onSubmit={handleSubmit}
+            className="rounded-2xl p-7 space-y-7"
+            style={{ background: '#08080F', border: '1px solid rgba(255,255,255,0.06)' }}>
+
             <div className="flex justify-between items-center">
-              <h2 className="font-semibold text-lg">{editingId ? 'Edit Product' : 'Add New Product'}</h2>
-              {editingId && <button type="button" onClick={resetForm} className="text-sm text-gray-400 hover:text-gray-600">Cancel Edit</button>}
+              <div>
+                <p className="text-[10px] tracking-[0.3em] uppercase mb-1" style={{ color: 'rgba(240,235,225,0.3)' }}>
+                  {editingId ? 'Modify' : 'Create'}
+                </p>
+                <h2 className="font-display text-2xl font-semibold" style={{ color: '#F0EBE1' }}>
+                  {editingId ? 'Edit Product' : 'Add New Product'}
+                </h2>
+              </div>
+              {editingId && (
+                <button type="button" onClick={resetForm}
+                  className="text-sm transition-colors"
+                  style={{ color: 'rgba(240,235,225,0.35)' }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'rgba(240,235,225,0.7)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,235,225,0.35)'}>
+                  Cancel Edit
+                </button>
+              )}
             </div>
+
+            {/* Divider */}
+            <div className="divider-gold" />
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2"><label className={lbl}>Product Name</label><input className={inp} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Traditional Tilhari Necklace" required /></div>
-              <div className="col-span-2"><label className={lbl}>Description</label><textarea className={inp} rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} required /></div>
+              <div className="col-span-2">
+                <label className={lbl}>Product Name</label>
+                <input className={inp} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Traditional Tilhari Necklace" required />
+              </div>
+              <div className="col-span-2">
+                <label className={lbl}>Description</label>
+                <textarea className={inp} rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} required />
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-              <div><label className={lbl}>Category</label>
+              <div>
+                <label className={lbl}>Category</label>
                 <select className={inp} value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} required>
                   <option value="">Select</option>
-                  {['ring', 'necklace', 'bracelet', 'earring', 'anklet', 'chain', 'cufflink', 'tayo', 'tilhari', 'churra', 'pote', 'kantha', 'set'].map(c => <option key={c} value={c}>{c}</option>)}
+                  {['ring','necklace','bracelet','earring','anklet','chain','cufflink','tayo','tilhari','churra','pote','kantha','set'].map(c =>
+                    <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div><label className={lbl}>Gender</label>
+              <div>
+                <label className={lbl}>Gender</label>
                 <select className={inp} value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })} required>
                   <option value="">Select</option>
-                  <option value="female">Female</option><option value="male">Male</option><option value="unisex">Unisex</option>
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                  <option value="unisex">Unisex</option>
                 </select>
               </div>
-              <div><label className={lbl}>Age Group</label>
+              <div>
+                <label className={lbl}>Age Group</label>
                 <select className={inp} value={form.ageGroup} onChange={e => setForm({ ...form, ageGroup: e.target.value })}>
-                  <option value="adult">Adult</option><option value="youth">Youth</option><option value="kids">Kids</option>
+                  <option value="adult">Adult</option>
+                  <option value="youth">Youth</option>
+                  <option value="kids">Kids</option>
                 </select>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-              <div><label className={lbl}>Style</label>
+              <div>
+                <label className={lbl}>Style</label>
                 <select className={inp} value={form.styleType} onChange={e => setForm({ ...form, styleType: e.target.value, subStyle: '' })}>
                   <option value="">Select</option>
-                  <option value="traditional">Traditional</option><option value="wedding">Wedding</option><option value="casual">Casual</option><option value="youth">Youth</option>
+                  <option value="traditional">Traditional</option>
+                  <option value="wedding">Wedding</option>
+                  <option value="casual">Casual</option>
+                  <option value="youth">Youth</option>
                 </select>
               </div>
               {form.styleType === 'youth' && (
-                <div><label className={lbl}>Sub Style</label>
+                <div>
+                  <label className={lbl}>Sub Style</label>
                   <select className={inp} value={form.subStyle} onChange={e => setForm({ ...form, subStyle: e.target.value })}>
                     <option value="">Select</option>
-                    {['gothic', 'cybersilian', 'streetwear', 'minimalist', 'cottagecore'].map(s => <option key={s} value={s}>{s}</option>)}
+                    {['gothic','cybersilian','streetwear','minimalist','cottagecore'].map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
               )}
-              <div><label className={lbl}>Occasion</label>
+              <div>
+                <label className={lbl}>Occasion</label>
                 <select className={inp} value={form.occasion} onChange={e => setForm({ ...form, occasion: e.target.value })}>
                   <option value="">Select</option>
-                  {['wedding', 'casual', 'festival', 'daily', 'gifting'].map(o => <option key={o} value={o}>{o}</option>)}
+                  {['wedding','casual','festival','daily','gifting'].map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
             </div>
 
+            {/* Metal Options */}
             <div>
               <label className={lbl}>Metal Options</label>
-              <div className="flex gap-4">
-                {['gold', 'silver', 'roseGold'].map(m => (
-                  <label key={m} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="checkbox" checked={form.metalOptions.includes(m)} onChange={() => setForm({ ...form, metalOptions: toggle(form.metalOptions, m) })} />
+              <div className="flex gap-5">
+                {['gold','silver'].map(m => (
+                  <label key={m} className="flex items-center gap-2.5 text-sm cursor-pointer"
+                    style={{ color: 'rgba(240,235,225,0.7)' }}>
+                    <input type="checkbox"
+                      checked={form.metalOptions.includes(m)}
+                      onChange={() => setForm({ ...form, metalOptions: toggle(form.metalOptions, m) })}
+                      className="accent-gold" />
                     <span className="capitalize">{m}</span>
                   </label>
                 ))}
@@ -300,22 +402,30 @@ export default function AdminDashboard() {
 
             <div className="grid grid-cols-2 gap-4">
               {form.metalOptions.includes('gold') && (
-                <div><label className={lbl}>Gold Purity</label>
-                  <div className="flex gap-3 flex-wrap">
-                    {['24K', '23K', '22K', '18K'].map(p => (
-                      <label key={p} className="flex items-center gap-1 text-sm cursor-pointer">
-                        <input type="checkbox" checked={form.purityGold.includes(p)} onChange={() => setForm({ ...form, purityGold: toggle(form.purityGold, p) })} />{p}
+                <div>
+                  <label className={lbl}>Gold Purity</label>
+                  <div className="flex gap-4 flex-wrap">
+                    {['24K','23K','22K','18K'].map(p => (
+                      <label key={p} className="flex items-center gap-1.5 text-sm cursor-pointer"
+                        style={{ color: 'rgba(240,235,225,0.7)' }}>
+                        <input type="checkbox" checked={form.purityGold.includes(p)}
+                          onChange={() => setForm({ ...form, purityGold: toggle(form.purityGold, p) })}
+                          className="accent-gold" />{p}
                       </label>
                     ))}
                   </div>
                 </div>
               )}
               {form.metalOptions.includes('silver') && (
-                <div><label className={lbl}>Silver Purity</label>
-                  <div className="flex gap-3 flex-wrap">
-                    {['999', '925'].map(p => (
-                      <label key={p} className="flex items-center gap-1 text-sm cursor-pointer">
-                        <input type="checkbox" checked={form.puritySilver.includes(p)} onChange={() => setForm({ ...form, puritySilver: toggle(form.puritySilver, p) })} />{p}
+                <div>
+                  <label className={lbl}>Silver Purity</label>
+                  <div className="flex gap-4 flex-wrap">
+                    {['999','925'].map(p => (
+                      <label key={p} className="flex items-center gap-1.5 text-sm cursor-pointer"
+                        style={{ color: 'rgba(240,235,225,0.7)' }}>
+                        <input type="checkbox" checked={form.puritySilver.includes(p)}
+                          onChange={() => setForm({ ...form, puritySilver: toggle(form.puritySilver, p) })}
+                          className="accent-gold" />{p}
                       </label>
                     ))}
                   </div>
@@ -326,36 +436,64 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-2 gap-4">
               <div><label className={lbl}>Min Weight (Tola)</label><input className={inp} type="number" step="0.1" value={form.minWeightTola} onChange={e => setForm({ ...form, minWeightTola: e.target.value })} required /></div>
               <div><label className={lbl}>Max Weight (Tola)</label><input className={inp} type="number" step="0.1" value={form.maxWeightTola} onChange={e => setForm({ ...form, maxWeightTola: e.target.value })} required /></div>
-              <div><label className={lbl}>Making Charge (Rs)</label><input className={inp} type="number" value={form.makingChargePerTola} onChange={e => setForm({ ...form, makingChargePerTola: e.target.value })} required /></div>
+              <div><label className={lbl}>Making Charge (Rs/Tola)</label><input className={inp} type="number" value={form.makingChargePerTola} onChange={e => setForm({ ...form, makingChargePerTola: e.target.value })} required /></div>
               <div><label className={lbl}>Jarti Amount (Rs)</label><input className={inp} type="number" value={form.jartiAmount} onChange={e => setForm({ ...form, jartiAmount: e.target.value })} /></div>
               <div><label className={lbl}>Stone Charge (Rs)</label><input className={inp} type="number" value={form.stoneCharge} onChange={e => setForm({ ...form, stoneCharge: e.target.value })} /></div>
-              <div><label className={lbl}>Measurement Type</label>
+              <div>
+                <label className={lbl}>Measurement Type</label>
                 <select className={inp} value={form.measurementType} onChange={e => setForm({ ...form, measurementType: e.target.value })}>
-                  <option value="none">None</option><option value="circumference">Circumference</option><option value="length">Length</option><option value="diameter">Diameter</option>
+                  <option value="none">None</option>
+                  <option value="circumference">Circumference</option>
+                  <option value="length">Length</option>
+                  <option value="diameter">Diameter</option>
                 </select>
               </div>
             </div>
 
+            {/* Toggles */}
             <div className="flex flex-wrap gap-6">
-              {[['isTraditional', 'Traditional'], ['hallmark', 'Hallmark'], ['customizable', 'Customizable'], ['pickupAvailable', 'Pickup Available'], ['inStock', 'In Stock']].map(([key, label]) => (
-                <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={form[key]} onChange={e => setForm({ ...form, [key]: e.target.checked })} />{label}
+              {[['isTraditional','Traditional'],['hallmark','Hallmark'],['customizable','Customizable'],['pickupAvailable','Pickup Available'],['inStock','In Stock']].map(([key, label]) => (
+                <label key={key} className="flex items-center gap-2.5 text-sm cursor-pointer"
+                  style={{ color: 'rgba(240,235,225,0.7)' }}>
+                  <input type="checkbox" checked={form[key]} onChange={e => setForm({ ...form, [key]: e.target.checked })}
+                    className="accent-gold" />
+                  {label}
                 </label>
               ))}
             </div>
 
-            <div><label className={lbl}>Product Images (max 5)</label>
-              <input type="file" accept="image/*" multiple onChange={e => setImages(Array.from(e.target.files))} className="text-sm" />
-              {images.length > 0 && <p className="text-xs text-gray-400 mt-1">{images.length} image(s) selected</p>}
+            {/* Images */}
+            <div>
+              <label className={lbl}>Product Images (max 5)</label>
+              <input type="file" accept="image/*" multiple onChange={e => setImages(Array.from(e.target.files))}
+                className="text-sm" style={{ color: 'rgba(240,235,225,0.55)' }} />
+              {images.length > 0 && <p className="text-xs mt-1" style={{ color: 'rgba(240,235,225,0.3)' }}>{images.length} image(s) selected</p>}
             </div>
 
-            <div><label className={lbl}>3D Model (.glb / .gltf)</label>
-              <input type="file" accept=".glb,.gltf" onChange={e => setModel(e.target.files[0])} className="text-sm" />
-              {model && <p className="text-xs text-gray-400 mt-1">{model.name}</p>}
+            {/* 3D Model */}
+            <div>
+              <label className={lbl}>3D Model (.glb / .gltf)</label>
+              <input type="file" accept=".glb,.gltf" onChange={handleModelChange}
+                className="text-sm" style={{ color: 'rgba(240,235,225,0.55)' }} />
+              {model && <p className="text-xs mt-1" style={{ color: 'rgba(240,235,225,0.3)' }}>{model.name}</p>}
+
+              {modelPreviewUrl && (
+                <div className="mt-4">
+                  <p className={lbl}>3D Preview</p>
+                  <div className="w-full h-72 rounded-xl overflow-hidden" style={{ background: '#04040A', border: '1px solid rgba(201,169,110,0.15)' }}>
+                    <ModelViewerDetail modelUrl={modelPreviewUrl} metal={form.metalOptions[0] || 'gold'} purity={form.purityGold[0] || '22K'} />
+                  </div>
+                  <p className="text-xs mt-1.5" style={{ color: 'rgba(240,235,225,0.25)' }}>Drag to rotate · Scroll to zoom</p>
+                </div>
+              )}
             </div>
 
-            <button type="submit" disabled={loading} className="w-full bg-black text-white py-3 rounded font-medium hover:bg-gray-800 disabled:opacity-50 transition">
-              {loading ? 'Saving...' : editingId ? 'Update Product' : 'Create Product'}
+            <button type="submit" disabled={loading}
+              className="w-full py-3.5 rounded-xl font-semibold text-sm tracking-widest transition-all disabled:opacity-40"
+              style={{ background: '#C9A96E', color: '#04040A' }}
+              onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#E8D4A0' }}
+              onMouseLeave={e => e.currentTarget.style.background = '#C9A96E'}>
+              {loading ? 'Saving…' : editingId ? 'Update Product' : 'Create Product'}
             </button>
           </form>
         )}
@@ -363,60 +501,85 @@ export default function AdminDashboard() {
         {/* ORDERS TAB */}
         {tab === 'orders' && (
           <div>
-            <h2 className="font-semibold text-lg mb-4">All Orders ({orders.length})</h2>
+            <div className="mb-6">
+              <p className="text-[10px] tracking-[0.3em] uppercase mb-1" style={{ color: 'rgba(240,235,225,0.3)' }}>Management</p>
+              <h2 className="font-display text-2xl font-semibold" style={{ color: '#F0EBE1' }}>
+                All Orders <span style={{ color: 'rgba(240,235,225,0.3)', fontSize: '1rem' }}>({orders.length})</span>
+              </h2>
+            </div>
 
             {/* Order detail modal */}
             {selectedOrder && (
-              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-lg">Order #{selectedOrder._id.slice(-8).toUpperCase()}</h3>
-                    <button onClick={() => { setSelectedOrder(null); setStatusNote('') }} className="text-gray-400 hover:text-gray-700 text-2xl">×</button>
-                  </div>
-
-                  <div className="space-y-3 mb-4">
-                    <div className="flex justify-between text-sm"><span className="text-gray-500">Customer</span><span className="font-medium">{selectedOrder.user?.name}</span></div>
-                    <div className="flex justify-between text-sm"><span className="text-gray-500">Email</span><span>{selectedOrder.user?.email}</span></div>
-                    <div className="flex justify-between text-sm"><span className="text-gray-500">Delivery</span><span className="capitalize">{selectedOrder.deliveryType}</span></div>
-                    <div className="flex justify-between text-sm"><span className="text-gray-500">Total</span><span className="font-bold">Rs {selectedOrder.grandTotal?.toLocaleString()}</span></div>
-                    <div className="flex justify-between text-sm"><span className="text-gray-500">Advance Paid</span><span>Rs {selectedOrder.advancePaid?.toLocaleString()}</span></div>
-                  </div>
-
-                  {selectedOrder.deliveryAddress && (
-                    <div className="bg-gray-50 rounded-lg p-3 text-sm mb-4">
-                      <p className="font-semibold mb-1">Delivery Address</p>
-                      <p className="text-gray-600">{selectedOrder.deliveryAddress.fullName} · {selectedOrder.deliveryAddress.phone}</p>
-                      <p className="text-gray-600">{selectedOrder.deliveryAddress.address}, {selectedOrder.deliveryAddress.city}</p>
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
+                <div className="rounded-2xl max-w-lg w-full p-7 max-h-[90vh] overflow-y-auto"
+                  style={{ background: '#0E0E18', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <p className="text-[10px] tracking-[0.3em] uppercase mb-1" style={{ color: 'rgba(240,235,225,0.3)' }}>Order Details</p>
+                      <h3 className="font-display text-xl font-bold" style={{ color: '#F0EBE1' }}>
+                        #{selectedOrder._id.slice(-8).toUpperCase()}
+                      </h3>
                     </div>
-                  )}
+                    <button onClick={() => { setSelectedOrder(null); setStatusNote('') }}
+                      className="w-9 h-9 flex items-center justify-center rounded-xl text-xl transition-colors"
+                      style={{ color: 'rgba(240,235,225,0.4)', background: 'rgba(255,255,255,0.04)' }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#F0EBE1'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,235,225,0.4)'}>
+                      ×
+                    </button>
+                  </div>
 
-                  <div className="mb-4">
-                    <p className="font-semibold text-sm mb-2">Items</p>
-                    {selectedOrder.items?.map((item, i) => (
-                      <div key={i} className="flex justify-between text-sm py-1 border-b last:border-0">
-                        <span>{item.product?.name || 'Product'} · {item.selectedMetal} {item.selectedPurity} {item.selectedWeight}t</span>
-                        <span>Rs {item.itemTotal?.toLocaleString()}</span>
+                  <div className="space-y-3 mb-5">
+                    {[
+                      ['Customer', selectedOrder.user?.name],
+                      ['Email',    selectedOrder.user?.email],
+                      ['Delivery', selectedOrder.deliveryType],
+                      ['Total',    `Rs ${selectedOrder.grandTotal?.toLocaleString()}`],
+                      ['Advance Paid', `Rs ${selectedOrder.advancePaid?.toLocaleString()}`],
+                    ].map(([k, v]) => (
+                      <div key={k} className="flex justify-between text-sm py-2"
+                        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ color: 'rgba(240,235,225,0.38)' }}>{k}</span>
+                        <span className="font-medium capitalize" style={{ color: '#F0EBE1' }}>{v}</span>
                       </div>
                     ))}
                   </div>
 
-                  <div className="space-y-2">
-                    <p className="font-semibold text-sm">Update Status</p>
-                    <select className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-black"
-                      defaultValue={selectedOrder.status}
-                      onChange={e => setStatusNote(prev => prev)}
-                      id="statusSelect">
+                  {selectedOrder.deliveryAddress && (
+                    <div className="rounded-xl p-4 text-sm mb-5"
+                      style={{ background: '#141420', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <p className="font-semibold mb-1.5" style={{ color: '#C9A96E' }}>Delivery Address</p>
+                      <p style={{ color: 'rgba(240,235,225,0.6)' }}>{selectedOrder.deliveryAddress.fullName} · {selectedOrder.deliveryAddress.phone}</p>
+                      <p style={{ color: 'rgba(240,235,225,0.6)' }}>{selectedOrder.deliveryAddress.address}, {selectedOrder.deliveryAddress.city}</p>
+                    </div>
+                  )}
+
+                  <div className="mb-5">
+                    <p className="font-semibold text-sm mb-3" style={{ color: 'rgba(240,235,225,0.55)' }}>Items</p>
+                    {selectedOrder.items?.map((item, i) => (
+                      <div key={i} className="flex justify-between text-sm py-2"
+                        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'rgba(240,235,225,0.6)' }}>
+                        <span>{item.product?.name || 'Product'} · {item.selectedMetal} {item.selectedPurity} {item.selectedWeight}t</span>
+                        <span style={{ color: '#C9A96E' }}>Rs {item.itemTotal?.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="font-semibold text-sm" style={{ color: 'rgba(240,235,225,0.55)' }}>Update Status</p>
+                    <select className={inp} defaultValue={selectedOrder.status} id="statusSelect">
                       {ORDER_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                     </select>
                     <input value={statusNote} onChange={e => setStatusNote(e.target.value)}
                       placeholder="Optional note (e.g. Dispatched via Blue Dart)"
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-black" />
+                      className={inp} />
                     <button
-                      onClick={() => {
-                        const sel = document.getElementById('statusSelect')
-                        handleUpdateStatus(selectedOrder._id, sel.value)
-                      }}
-                      className="w-full bg-black text-white py-2.5 rounded font-medium hover:bg-gray-800 transition text-sm">
+                      onClick={() => { const sel = document.getElementById('statusSelect'); handleUpdateStatus(selectedOrder._id, sel.value) }}
+                      className="w-full py-3 rounded-xl font-semibold text-sm tracking-widest transition-all"
+                      style={{ background: '#C9A96E', color: '#04040A' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#E8D4A0'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#C9A96E'}>
                       Update Status
                     </button>
                   </div>
@@ -425,36 +588,54 @@ export default function AdminDashboard() {
             )}
 
             {orders.length === 0 ? (
-              <div className="text-center py-20 text-gray-400">No orders yet.</div>
+              <div className="text-center py-24" style={{ color: 'rgba(240,235,225,0.28)' }}>No orders yet.</div>
             ) : (
-              <div className="bg-white rounded border overflow-hidden">
+              <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)', background: '#08080F' }}>
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
+                  <thead style={{ background: '#0E0E18', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <tr>
-                      {['Order ID', 'Customer', 'Items', 'Total', 'Delivery', 'Status', 'Date', 'Action'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{h}</th>
+                      {['Order ID','Customer','Items','Total','Delivery','Status','Date','Action'].map(h => (
+                        <th key={h} className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.15em]"
+                          style={{ color: 'rgba(240,235,225,0.35)' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {orders.map((order, i) => (
-                      <tr key={order._id} className={`border-b hover:bg-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
-                        <td className="px-4 py-3 font-mono text-xs">#{order._id.slice(-6).toUpperCase()}</td>
-                        <td className="px-4 py-3">
-                          <p className="font-medium text-xs">{order.user?.name}</p>
-                          <p className="text-gray-400 text-xs">{order.user?.email}</p>
+                      <tr key={order._id}
+                        style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(201,169,110,0.03)'}
+                        onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)'}>
+                        <td className="px-4 py-3 font-mono text-xs" style={{ color: '#C9A96E' }}>
+                          #{order._id.slice(-6).toUpperCase()}
                         </td>
-                        <td className="px-4 py-3 text-xs">{order.items?.length} item{order.items?.length !== 1 ? 's' : ''}</td>
-                        <td className="px-4 py-3 font-semibold text-xs">Rs {order.grandTotal?.toLocaleString()}</td>
-                        <td className="px-4 py-3 capitalize text-xs">{order.deliveryType}</td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-600'}`}>
+                          <p className="font-medium text-xs" style={{ color: '#F0EBE1' }}>{order.user?.name}</p>
+                          <p className="text-xs mt-0.5" style={{ color: 'rgba(240,235,225,0.35)' }}>{order.user?.email}</p>
+                        </td>
+                        <td className="px-4 py-3 text-xs" style={{ color: 'rgba(240,235,225,0.55)' }}>
+                          {order.items?.length} item{order.items?.length !== 1 ? 's' : ''}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-xs" style={{ color: '#C9A96E' }}>
+                          Rs {order.grandTotal?.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 capitalize text-xs" style={{ color: 'rgba(240,235,225,0.55)' }}>{order.deliveryType}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[order.status] || 'bg-white/10 text-white/60'}`}>
                             {STATUS_LABELS[order.status] || order.status}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-400">{new Date(order.createdAt).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 text-xs" style={{ color: 'rgba(240,235,225,0.35)' }}>
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </td>
                         <td className="px-4 py-3">
-                          <button onClick={() => setSelectedOrder(order)} className="text-xs px-3 py-1 border rounded hover:bg-gray-100">Manage</button>
+                          <button onClick={() => setSelectedOrder(order)}
+                            className="text-xs px-3 py-1.5 rounded-lg transition-all"
+                            style={{ border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(240,235,225,0.6)' }}
+                            onMouseEnter={e => { e.currentTarget.style.border = '1px solid rgba(201,169,110,0.4)'; e.currentTarget.style.color = '#C9A96E' }}
+                            onMouseLeave={e => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'rgba(240,235,225,0.6)' }}>
+                            Manage
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -468,44 +649,54 @@ export default function AdminDashboard() {
         {/* CUSTOMERS TAB */}
         {tab === 'customers' && (
           <div>
-            <h2 className="font-semibold text-lg mb-4">All Customers ({customers.length})</h2>
+            <div className="mb-6">
+              <p className="text-[10px] tracking-[0.3em] uppercase mb-1" style={{ color: 'rgba(240,235,225,0.3)' }}>Directory</p>
+              <h2 className="font-display text-2xl font-semibold" style={{ color: '#F0EBE1' }}>
+                All Customers <span style={{ color: 'rgba(240,235,225,0.3)', fontSize: '1rem' }}>({customers.length})</span>
+              </h2>
+            </div>
             {customers.length === 0 ? (
-              <div className="text-center py-20 text-gray-400">No customers yet.</div>
+              <div className="text-center py-24" style={{ color: 'rgba(240,235,225,0.28)' }}>No customers yet.</div>
             ) : (
-              <div className="bg-white rounded border overflow-hidden">
+              <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)', background: '#08080F' }}>
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
+                  <thead style={{ background: '#0E0E18', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <tr>
-                      {['Name', 'Email', 'Phone', 'Gender', 'Orders', 'Total Spent', 'Joined', 'Status'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{h}</th>
+                      {['Name','Email','Phone','Gender','Orders','Total Spent','Joined','Status'].map(h => (
+                        <th key={h} className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.15em]"
+                          style={{ color: 'rgba(240,235,225,0.35)' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {customers.map((c, i) => (
-                      <tr key={c._id} className={`border-b hover:bg-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
+                      <tr key={c._id}
+                        style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(201,169,110,0.03)'}
+                        onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)'}>
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-black text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
+                              style={{ background: 'rgba(201,169,110,0.12)', border: '1px solid rgba(201,169,110,0.2)', color: '#C9A96E' }}>
                               {c.name?.charAt(0).toUpperCase()}
                             </div>
-                            <span className="font-medium text-xs">{c.name}</span>
+                            <span className="font-medium text-xs" style={{ color: '#F0EBE1' }}>{c.name}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-500">{c.email}</td>
-                        <td className="px-4 py-3 text-xs text-gray-500">{c.phone || '—'}</td>
-                        <td className="px-4 py-3 text-xs capitalize text-gray-500">
+                        <td className="px-4 py-3 text-xs" style={{ color: 'rgba(240,235,225,0.45)' }}>{c.email}</td>
+                        <td className="px-4 py-3 text-xs" style={{ color: 'rgba(240,235,225,0.45)' }}>{c.phone || '—'}</td>
+                        <td className="px-4 py-3 text-xs capitalize" style={{ color: 'rgba(240,235,225,0.45)' }}>
                           {c.gender ? c.gender.replace('_', ' ') : '—'}
                         </td>
-                        <td className="px-4 py-3 text-xs font-semibold">{c.orderCount}</td>
-                        <td className="px-4 py-3 text-xs font-semibold">
+                        <td className="px-4 py-3 text-xs font-semibold" style={{ color: '#F0EBE1' }}>{c.orderCount}</td>
+                        <td className="px-4 py-3 text-xs font-semibold" style={{ color: '#C9A96E' }}>
                           {c.totalSpent > 0 ? `Rs ${c.totalSpent.toLocaleString()}` : '—'}
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-400">
+                        <td className="px-4 py-3 text-xs" style={{ color: 'rgba(240,235,225,0.35)' }}>
                           {new Date(c.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${c.isVerified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${c.isVerified ? 'bg-teal-500/15 text-teal-400 border border-teal-500/25' : 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/25'}`}>
                             {c.isVerified ? 'Verified' : 'Unverified'}
                           </span>
                         </td>
@@ -521,40 +712,75 @@ export default function AdminDashboard() {
         {/* GOLD RATE TAB */}
         {tab === 'gold rate' && (
           <div className="space-y-6">
-            <div className="bg-white rounded border p-6">
-              <h2 className="font-semibold text-lg mb-4">Current Gold & Silver Rate</h2>
+            {/* Current Rate */}
+            <div className="rounded-2xl p-7" style={{ background: '#08080F', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="mb-5">
+                <p className="text-[10px] tracking-[0.3em] uppercase mb-1" style={{ color: 'rgba(240,235,225,0.3)' }}>Live Prices</p>
+                <h2 className="font-display text-2xl font-semibold" style={{ color: '#F0EBE1' }}>Current Gold & Silver Rate</h2>
+              </div>
               {goldRate ? (
                 <div className="grid grid-cols-3 gap-4">
-                  {[['Fine Gold (9999)', goldRate.fineGoldPerTola], ['Tejabi Gold', goldRate.tejabiGoldPerTola], ['Silver', goldRate.silverPerTola]].map(([label, val]) => (
-                    <div key={label} className="bg-yellow-50 border border-yellow-200 rounded p-4">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
-                      <p className="text-2xl font-bold mt-1">Rs {val?.toLocaleString()}</p>
-                      <p className="text-xs text-gray-400">per tola</p>
+                  {[
+                    ['Fine Gold (9999)', goldRate.fineGoldPerTola, '#C9A96E', 'rgba(201,169,110,0.1)', 'rgba(201,169,110,0.2)'],
+                    ['Tejabi Gold',      goldRate.tejabiGoldPerTola, '#E8D4A0', 'rgba(232,212,160,0.08)', 'rgba(232,212,160,0.18)'],
+                    ['Silver',          goldRate.silverPerTola, '#94A3B8', 'rgba(148,163,184,0.08)', 'rgba(148,163,184,0.18)'],
+                  ].map(([label, val, color, bg, border]) => (
+                    <div key={label} className="rounded-xl p-5"
+                      style={{ background: bg, border: `1px solid ${border}` }}>
+                      <p className="text-[10px] uppercase tracking-[0.15em] mb-2" style={{ color: 'rgba(240,235,225,0.38)' }}>{label}</p>
+                      <p className="text-2xl font-bold" style={{ color }}>Rs {val?.toLocaleString()}</p>
+                      <p className="text-xs mt-1" style={{ color: 'rgba(240,235,225,0.28)' }}>per tola</p>
                     </div>
                   ))}
                 </div>
-              ) : <p className="text-gray-400">No rate found</p>}
-              <div className="mt-4 flex gap-3 items-center">
-                <button onClick={handleScrape} disabled={loading} className="bg-black text-white px-4 py-2 text-sm rounded hover:bg-gray-800 disabled:opacity-50">
-                  {loading ? 'Scraping...' : 'Scrape from fenegosida.org'}
+              ) : <p style={{ color: 'rgba(240,235,225,0.35)' }}>No rate found</p>}
+
+              <div className="mt-5 flex gap-3 items-center">
+                <button onClick={handleScrape} disabled={loading}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold tracking-wide transition-all disabled:opacity-40"
+                  style={{ background: '#C9A96E', color: '#04040A' }}
+                  onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#E8D4A0' }}
+                  onMouseLeave={e => e.currentTarget.style.background = '#C9A96E'}>
+                  {loading ? 'Scraping…' : 'Scrape from fenegosida.org'}
                 </button>
-                {goldRate && <span className="text-xs text-gray-400">{goldRate.isManual ? '— Set manually' : `— Last scraped: ${new Date(goldRate.lastScraped).toLocaleString()}`}</span>}
+                {goldRate && (
+                  <span className="text-xs" style={{ color: 'rgba(240,235,225,0.3)' }}>
+                    {goldRate.isManual ? '— Set manually' : `— Last scraped: ${new Date(goldRate.lastScraped).toLocaleString()}`}
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="bg-white rounded border p-6">
-              <h2 className="font-semibold text-lg mb-4">Set Rate Manually</h2>
+            {/* Manual Rate */}
+            <div className="rounded-2xl p-7" style={{ background: '#08080F', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="mb-5">
+                <p className="text-[10px] tracking-[0.3em] uppercase mb-1" style={{ color: 'rgba(240,235,225,0.3)' }}>Override</p>
+                <h2 className="font-display text-2xl font-semibold" style={{ color: '#F0EBE1' }}>Set Rate Manually</h2>
+              </div>
               <div className="grid grid-cols-3 gap-4">
-                {[['fineGoldPerTola', 'Fine Gold / Tola (Rs)', '291400'], ['tejabiGoldPerTola', 'Tejabi Gold / Tola (Rs)', '0'], ['silverPerTola', 'Silver / Tola (Rs)', '4780']].map(([key, label, ph]) => (
-                  <div key={key}><label className={lbl}>{label}</label>
-                    <input className={inp} type="number" value={manualRate[key]} onChange={e => setManualRate({ ...manualRate, [key]: e.target.value })} placeholder={ph} />
+                {[
+                  ['fineGoldPerTola',   'Fine Gold / Tola (Rs)',   '291400'],
+                  ['tejabiGoldPerTola', 'Tejabi Gold / Tola (Rs)', '0'],
+                  ['silverPerTola',     'Silver / Tola (Rs)',       '4780'],
+                ].map(([key, label, ph]) => (
+                  <div key={key}>
+                    <label className={lbl}>{label}</label>
+                    <input className={inp} type="number" value={manualRate[key]}
+                      onChange={e => setManualRate({ ...manualRate, [key]: e.target.value })} placeholder={ph} />
                   </div>
                 ))}
               </div>
-              <button onClick={handleManualRate} className="mt-4 bg-black text-white px-4 py-2 text-sm rounded hover:bg-gray-800">Save Manual Rate</button>
+              <button onClick={handleManualRate}
+                className="mt-5 px-5 py-2.5 rounded-xl text-sm font-semibold tracking-wide transition-all"
+                style={{ background: '#C9A96E', color: '#04040A' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#E8D4A0'}
+                onMouseLeave={e => e.currentTarget.style.background = '#C9A96E'}>
+                Save Manual Rate
+              </button>
             </div>
           </div>
         )}
+
       </div>
     </div>
   )
