@@ -83,7 +83,7 @@ export default function Home() {
       {/* ══════════════════════════════════════════════════════════
           HERO
       ══════════════════════════════════════════════════════════ */}
-      <section className="relative min-h-[96vh] flex flex-col items-center justify-center text-center px-6 overflow-hidden grain">
+      <section className="relative min-h-screen -mt-16 md:-mt-[72px] flex flex-col items-center justify-center text-center px-6 overflow-hidden grain">
 
         {/* Layered ambient background — peacock palette */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden>

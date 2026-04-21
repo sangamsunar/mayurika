@@ -10,10 +10,10 @@ const IMG_ARTISAN = 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a
 const VALUES = [
   { num: '01', title: 'Purity & Trust', desc: 'Every piece is hallmark certified by the Government of Nepal. We never compromise on the purity of our metals.', accent: '#C9A96E' },
   { num: '02', title: 'Craftsmanship First', desc: 'Our artisans are master craftsmen from Patan and Bhaktapur — the historic heart of Nepali metalwork.', accent: '#2DD4BF' },
-  { num: '03', title: 'Supporting Local', desc: 'By choosing Maryurika, you support local Nepali artisans and the preservation of ancient jewellery traditions.', accent: '#A78BFA' },
+  { num: '03', title: 'Supporting Local', desc: 'By choosing MAYURIKA, you support local Nepali artisans and the preservation of ancient jewellery traditions.', accent: '#A78BFA' },
   { num: '04', title: 'Innovation', desc: 'We are the first jewellery brand in Nepal to offer interactive 3D previews of every piece before it is made.', accent: '#F472B6' },
   { num: '05', title: 'Personal Service', desc: 'We are a small team that cares deeply. Every custom order is a personal conversation — we listen, design, deliver.', accent: '#60A5FA' },
-  { num: '06', title: 'Proudly Nepali', desc: 'From the metals we source to the hands that craft them — everything about Maryurika is rooted in Nepal.', accent: '#34D399' },
+  { num: '06', title: 'Proudly Nepali', desc: 'From the metals we source to the hands that craft them — everything about MAYURIKA is rooted in Nepal.', accent: '#34D399' },
 ]
 
 const fadeUp = { hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0, transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] } } }
@@ -32,7 +32,7 @@ export default function About() {
         <div className="absolute inset-0">
           <img
             src={IMG_HERO}
-            alt="Maryurika — Our Story"
+            alt="MAYURIKA — Our Story"
             className="w-full h-full object-cover object-center"
             style={{ filter: 'brightness(0.38) saturate(0.8)' }}
           />
@@ -81,7 +81,7 @@ export default function About() {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="font-display font-bold tracking-[0.12em] mb-7 text-gradient-gold"
               style={{ fontSize: 'clamp(3.5rem, 10vw, 8rem)', lineHeight: 0.92 }}>
-              MARYURIKA
+              MAYURIKA
             </motion.h1>
 
             <motion.p
@@ -90,7 +90,7 @@ export default function About() {
               transition={{ duration: 0.7, delay: 0.4 }}
               className="text-base md:text-xl leading-relaxed max-w-2xl mx-auto font-light"
               style={{ color: 'rgba(240,235,225,0.65)' }}>
-              Born in the heart of Kathmandu, where ancient Nepali jewellery traditions
+              Born in the heart of Pokhara, where ancient Nepali jewellery traditions
               meet modern design and technology.
             </motion.p>
 
@@ -135,8 +135,8 @@ export default function About() {
               Crafted with<br /><em className="not-italic text-gradient-gold">Purpose</em>
             </h2>
             <div className="space-y-5 text-sm md:text-base leading-relaxed" style={{ color: 'rgba(240,235,225,0.55)' }}>
-              <p>Maryurika was founded with a single belief — that jewellery is not just an accessory, it is a story. Every piece we craft carries the weight of generations of Nepali artisanship, passed down through families in Patan, Bhaktapur, and Kathmandu.</p>
-              <p>We started as a small workshop in Kathmandu, working with local goldsmiths who had honed their craft over decades. Today, we bring that same craftsmanship to you — enhanced with 3D visualization so you can see every detail before your piece is made.</p>
+              <p>MAYURIKA was founded with a single belief — that jewellery is not just an accessory, it is a story. Every piece we craft carries the weight of generations of Nepali artisanship, passed down through families in Pokhara, Patan, Bhaktapur, and Kathmandu.</p>
+              <p>We started as a small workshop in Pokhara, working with local goldsmiths who had honed their craft over decades. Today, we bring that same craftsmanship to you — enhanced with 3D visualization so you can see every detail before your piece is made.</p>
               <p>From traditional Tilhari and Churra worn at Nepali weddings, to bold gothic pieces for the youth — we believe every person deserves jewellery that tells their unique story.</p>
             </div>
 
@@ -157,7 +157,7 @@ export default function About() {
             <div className="relative rounded-3xl overflow-hidden" style={{ aspectRatio: '4/5' }}>
               <img
                 src={IMG_CRAFT}
-                alt="Maryurika jewellery craftsmanship"
+                alt="MAYURIKA jewellery craftsmanship"
                 className="w-full h-full object-cover"
                 style={{ filter: 'brightness(0.85) saturate(1.1)' }}
               />
@@ -174,7 +174,7 @@ export default function About() {
               style={{ backdropFilter: 'blur(20px)' }}>
               <p className="font-display text-2xl font-bold text-gradient-gold">Est. 2010</p>
               <p className="text-[10px] tracking-widest mt-0.5" style={{ color: 'rgba(240,235,225,0.45)' }}>
-                KATHMANDU, NEPAL
+                Pokhara, Nepal
               </p>
             </div>
 
@@ -225,7 +225,7 @@ export default function About() {
               "Every piece is a conversation between tradition and the person who will wear it."
             </blockquote>
             <p className="mt-5 text-sm" style={{ color: 'rgba(240,235,225,0.4)' }}>
-              — Our Kathmandu Workshop
+              — Our Pokhara Workshop
             </p>
           </motion.div>
         </div>
@@ -309,7 +309,7 @@ export default function About() {
 
             {[
               { step: '01', title: 'Design', desc: 'Customer selects design, metal, purity and weight — previewed in 3D.', accent: '#C9A96E' },
-              { step: '02', title: 'Crafting', desc: 'Master artisans hand-craft your piece in our Kathmandu workshop.', accent: '#2DD4BF' },
+              { step: '02', title: 'Crafting', desc: 'Master artisans hand-craft your piece in our Pokhara workshop.', accent: '#2DD4BF' },
               { step: '03', title: 'Delivery', desc: 'Hallmark certified, beautifully packaged, delivered to your door.', accent: '#A78BFA' },
             ].map(s => (
               <motion.div key={s.step} variants={fadeUp}
@@ -348,7 +348,7 @@ export default function About() {
             Visit Our Store
           </h2>
           <p className="mb-10 max-w-xl mx-auto text-sm leading-relaxed" style={{ color: 'rgba(240,235,225,0.45)' }}>
-            Come see us in person. Try on pieces, meet our craftsmen, and experience Maryurika up close.
+            Come see us in person. Try on pieces, meet our craftsmen, and experience MAYURIKA up close.
           </p>
           <a href="https://maps.app.goo.gl/yrSCeXrXMU2mAK387" target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-semibold tracking-widest transition-all"
@@ -358,7 +358,7 @@ export default function About() {
             Get Directions <ArrowRightIcon size={14} />
           </a>
           <p className="text-[11px] mt-5 tracking-wider" style={{ color: 'rgba(240,235,225,0.3)' }}>
-            Kathmandu, Nepal · Open Sunday–Friday, 10AM–7PM
+            Pokhara, Nepal · Open Sunday–Friday, 10AM–7PM
           </p>
         </motion.div>
       </section>

@@ -29,25 +29,21 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const searchInputRef = useRef(null)
 
-  // Scroll detection
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40)
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
 
-  // Close menu on route change
   useEffect(() => {
     setMenuOpen(false)
     setSearchOpen(false)
   }, [location.pathname])
 
-  // Focus search input when opened
   useEffect(() => {
     if (searchOpen) setTimeout(() => searchInputRef.current?.focus(), 80)
   }, [searchOpen])
 
-  // Lock body scroll when mobile menu open
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : ""
     return () => { document.body.style.overflow = "" }
@@ -77,14 +73,30 @@ export default function Navbar() {
       {/* ── Main Navbar ───────────────────────────────────────────────── */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled
-            ? "bg-[#07070A]/90 backdrop-blur-2xl border-b border-white/[0.06] shadow-[0_1px_0_rgba(255,255,255,0.04)]"
-            : "bg-transparent"
+          ? "bg-[#04040A]/60 backdrop-blur-2xl border-b border-white/[0.1] shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+          : "bg-white/[0.03] backdrop-blur-xl border-b border-white/[0.06]"
           }`}
+        style={{
+          WebkitBackdropFilter: scrolled ? "blur(24px) saturate(1.6)" : "blur(16px) saturate(1.4)",
+        }}
       >
         <div className="max-w-[1440px] mx-auto px-6 md:px-10 h-16 md:h-[72px] flex items-center justify-between gap-6">
 
           {/* ── Left nav ────────────────────────────────── */}
           <nav className="hidden md:flex items-center gap-7 flex-1">
+
+            {/* Admin link — before MAN */}
+            {user?.role === "admin" && (
+              <Link to="/admin"
+                className={`text-[11px] tracking-[0.16em] font-medium transition-colors duration-200 relative group
+                  ${location.pathname === "/admin" ? "text-[#C9A96E]" : "text-ink-muted hover:text-ink"}`}
+              >
+                ADMIN
+                <span className={`absolute -bottom-0.5 left-0 h-px bg-[#C9A96E] transition-all duration-300
+                  ${location.pathname === "/admin" ? "w-full" : "w-0 group-hover:w-full"}`} />
+              </Link>
+            )}
+
             {NAV_LINKS.map(({ label, to }) => (
               <Link key={to} to={to}
                 className={`text-[11px] tracking-[0.16em] font-medium transition-colors duration-200 relative group
@@ -111,7 +123,7 @@ export default function Navbar() {
             {/* Search */}
             <button
               onClick={() => setSearchOpen(true)}
-              className="w-9 h-9 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-white/[0.06] transition-all"
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-white/[0.08] transition-all"
               aria-label="Search"
             >
               <SearchIcon size={18} strokeWidth={1.6} />
@@ -120,7 +132,7 @@ export default function Navbar() {
             {/* Wishlist */}
             <button
               onClick={() => guardAction(() => navigate("/wishlist"))}
-              className="relative w-9 h-9 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-white/[0.06] transition-all"
+              className="relative w-9 h-9 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-white/[0.08] transition-all"
               aria-label="Wishlist"
             >
               <HeartIcon size={18} strokeWidth={1.6} />
@@ -132,7 +144,7 @@ export default function Navbar() {
             {/* Cart */}
             <button
               onClick={() => guardAction(() => navigate("/cart"))}
-              className="w-9 h-9 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-white/[0.06] transition-all"
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-white/[0.08] transition-all"
               aria-label="Cart"
             >
               <CartIcon size={18} strokeWidth={1.6} />
@@ -153,21 +165,15 @@ export default function Navbar() {
                 </>
               ) : (
                 <div className="flex items-center gap-1">
-                  {user.role === "admin" && (
-                    <Link to="/admin"
-                      className="px-3 py-1.5 text-[11px] tracking-[0.1em] text-[#C9A96E] hover:text-[#E8D4A0] transition-colors">
-                      ADMIN
-                    </Link>
-                  )}
                   <Link to="/profile"
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] tracking-[0.1em] text-ink-muted hover:text-ink transition-colors rounded-lg hover:bg-white/[0.06]"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] tracking-[0.1em] text-ink-muted hover:text-ink transition-colors rounded-lg hover:bg-white/[0.08]"
                   >
                     <UserIcon size={14} strokeWidth={1.6} />
                     {user.name?.split(" ")[0]?.toUpperCase()}
                   </Link>
                   <button onClick={handleLogout}
-                    className="px-3 py-1.5 text-[11px] tracking-[0.1em] text-ink-dim hover:text-ink-muted transition-colors">
-                    OUT
+                    className="px-3 py-1.5 text-[11px] tracking-[0.1em] text-red-400/70 hover:text-red-400 transition-colors">
+                    LOGOUT
                   </button>
                 </div>
               )}
@@ -175,7 +181,7 @@ export default function Navbar() {
 
             {/* Hamburger — mobile */}
             <button
-              className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-white/[0.06] transition-all ml-1"
+              className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-white/[0.08] transition-all ml-1"
               onClick={() => setMenuOpen(p => !p)}
               aria-label="Menu"
             >
@@ -185,7 +191,7 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* ── Spacer (pushes content below fixed nav) ───────────────────── */}
+      {/* ── NO SPACER — hero image bleeds behind navbar ───────────────── */}
       <div className="h-16 md:h-[72px]" />
 
       {/* ── Search Overlay ────────────────────────────────────────────── */}
@@ -245,7 +251,6 @@ export default function Navbar() {
             transition={{ duration: 0.35, ease: [0.32, 0, 0.32, 1] }}
             className="fixed inset-0 z-[55] bg-[#07070A] flex flex-col"
           >
-            {/* Close bar */}
             <div className="flex justify-between items-center px-6 h-16">
               <span className="font-display font-bold text-xl tracking-[0.2em] text-ink">MAYURIKA</span>
               <button onClick={() => setMenuOpen(false)}
@@ -255,8 +260,6 @@ export default function Navbar() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col">
-
-              {/* Nav links */}
               <nav className="space-y-1 mb-10">
                 {NAV_LINKS.map(({ label, to }, i) => (
                   <motion.div key={to}
@@ -275,7 +278,6 @@ export default function Navbar() {
                 ))}
               </nav>
 
-              {/* Auth / profile */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}

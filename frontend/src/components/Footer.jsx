@@ -15,7 +15,7 @@ export default function Footer() {
         <div className="col-span-2">
           <p className="font-display text-2xl font-bold tracking-[0.2em] text-ink mb-4">MAYURIKA</p>
           <p className="text-ink-muted text-sm leading-relaxed max-w-xs">
-            Handcrafted jewellery from the heart of Kathmandu — where ancient Nepali tradition meets modern design.
+            Handcrafted jewellery from the heart of Pokhara — where ancient Nepali tradition meets modern design.
           </p>
           <a href="https://wa.me/9779702296671" target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-2.5 mt-6 px-4 py-2.5 glass rounded-xl text-sm font-medium text-green-400 hover:bg-green-400/10 transition-all">

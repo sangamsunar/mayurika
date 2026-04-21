@@ -41,7 +41,7 @@ const STONE_KEYWORDS = [
 
 function isStoneMesh(meshName, matName, originalMaterial) {
   const n = (meshName || '').toLowerCase()
-  const m = (matName  || '').toLowerCase()
+  const m = (matName || '').toLowerCase()
   // Keyword-based detection is the most reliable heuristic
   if (STONE_KEYWORDS.some(k => n.includes(k) || m.includes(k))) return true
   // Only use transparency as a secondary signal — GLTF models default to
@@ -63,11 +63,11 @@ function resolveUrl(url) {
 function AutoFitModel({ url, metal, purity, mouseXRef, isCard, onReady }) {
   const { scene } = useGLTF(resolveUrl(url))
   const { camera } = useThree()
-  const modelRef   = useRef()
-  const fitted     = useRef(false)
-  const originals  = useRef(null)
-  const autoAngle  = useRef(0)
-  const notified   = useRef(false)
+  const modelRef = useRef()
+  const fitted = useRef(false)
+  const originals = useRef(null)
+  const autoAngle = useRef(0)
+  const notified = useRef(false)
 
   useEffect(() => {
     // Build originals map AND apply materials in the same effect to avoid the
@@ -77,7 +77,7 @@ function AutoFitModel({ url, metal, purity, mouseXRef, isCard, onReady }) {
       if (child.isMesh) {
         map.set(child.uuid, {
           material: child.material.clone(),
-          name:    child.name || '',
+          name: child.name || '',
           matName: child.material?.name || '',
         })
       }
@@ -93,13 +93,13 @@ function AutoFitModel({ url, metal, purity, mouseXRef, isCard, onReady }) {
         child.material = orig.material.clone()
       } else {
         child.material = new THREE.MeshStandardMaterial({
-          color:           new THREE.Color(props.color),
-          metalness:       props.metalness,
-          roughness:       props.roughness,
+          color: new THREE.Color(props.color),
+          metalness: props.metalness,
+          roughness: props.roughness,
           envMapIntensity: props.envMapIntensity,
         })
       }
-      child.castShadow    = true
+      child.castShadow = true
       child.receiveShadow = true
     })
   }, [scene, metal, purity])
@@ -107,37 +107,33 @@ function AutoFitModel({ url, metal, purity, mouseXRef, isCard, onReady }) {
   useEffect(() => {
     if (fitted.current) return
     fitted.current = true
-    const box    = new THREE.Box3().setFromObject(scene)
-    const size   = new THREE.Vector3()
+    const box = new THREE.Box3().setFromObject(scene)
+    const size = new THREE.Vector3()
     const center = new THREE.Vector3()
     box.getSize(size)
     box.getCenter(center)
     scene.position.sub(center)
-    const maxDim   = Math.max(size.x, size.y, size.z)
-    const fov      = camera.fov * (Math.PI / 180)
+    const maxDim = Math.max(size.x, size.y, size.z)
+    const fov = camera.fov * (Math.PI / 180)
     const distance = Math.abs(maxDim / Math.sin(fov / 2)) * 0.75
     camera.position.set(0, 0, distance)
     camera.near = distance / 100
-    camera.far  = distance * 100
+    camera.far = distance * 100
     camera.updateProjectionMatrix()
   }, [scene, camera])
 
-  useFrame((_, delta) => {
+  useFrame(() => {
     if (!isCard || !modelRef.current) return
+
     const mx = mouseXRef?.current ?? 0
 
-    if (Math.abs(mx) < 0.05) {
-      // Auto-rotate slowly when mouse is away
-      autoAngle.current += delta * 0.45
-      modelRef.current.rotation.y = autoAngle.current
-    } else {
-      // Follow mouse with smooth lerp
-      const target = mx * Math.PI * 0.8
-      modelRef.current.rotation.y += (target - modelRef.current.rotation.y) * 0.08
-      autoAngle.current = modelRef.current.rotation.y
-    }
+    // Rotate ONLY based on mouse X position
+    const targetRotation = mx * Math.PI * 0.6
 
-    // Fire onReady once after first frame renders
+    // Smooth lerp for premium feel
+    modelRef.current.rotation.y +=
+      (targetRotation - modelRef.current.rotation.y) * 0.12
+
     if (!notified.current && onReady) {
       notified.current = true
       onReady()
@@ -152,21 +148,21 @@ function JewelleryLights() {
   return (
     <>
       <ambientLight intensity={1.2} />
-      <directionalLight position={[2,  4,  6]} intensity={1.8} color="#FFF8F0" castShadow />
-      <directionalLight position={[-4, 2,  4]} intensity={1.2} color="#FFFFFF" />
+      <directionalLight position={[2, 4, 6]} intensity={1.8} color="#FFF8F0" castShadow />
+      <directionalLight position={[-4, 2, 4]} intensity={1.2} color="#FFFFFF" />
       <directionalLight position={[3, -1, -4]} intensity={0.8} color="#FFF5E0" />
-      <directionalLight position={[0, -4,  3]} intensity={0.6} color="#FFFFFF" />
-      <directionalLight position={[-3, 3,  2]} intensity={0.7} color="#FFFFFF" />
+      <directionalLight position={[0, -4, 3]} intensity={0.6} color="#FFFFFF" />
+      <directionalLight position={[-3, 3, 2]} intensity={0.7} color="#FFFFFF" />
     </>
   )
 }
 
 // ── Lazy card viewer — Canvas only mounts once the card enters the viewport ───
 export function LazyModelViewerCard({ modelUrl, metal = 'gold', purity = '24K' }) {
-  const [visible, setVisible]   = useState(false)
-  const [ready, setReady]       = useState(false)
+  const [visible, setVisible] = useState(false)
+  const [ready, setReady] = useState(false)
   const containerRef = useRef()
-  const mouseXRef    = useRef(0)   // pass the REF OBJECT to AutoFitModel, not .current
+  const mouseXRef = useRef(0)   // pass the REF OBJECT to AutoFitModel, not .current
 
   useEffect(() => {
     const el = containerRef.current
@@ -258,7 +254,7 @@ export function LazyModelViewerCard({ modelUrl, metal = 'gold', purity = '24K' }
 // ── Original card viewer (kept for reference) — use LazyModelViewerCard instead
 export function ModelViewerCard({ modelUrl, metal = 'gold', purity = '24K' }) {
   const containerRef = useRef()
-  const mouseXRef    = useRef(0)
+  const mouseXRef = useRef(0)
 
   const handleMouseMove = (e) => {
     const rect = containerRef.current?.getBoundingClientRect()
