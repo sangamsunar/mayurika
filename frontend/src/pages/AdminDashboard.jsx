@@ -6,6 +6,8 @@ import { UserContext } from '../../context/userContext'
 import AdminAnalytics from './AdminAnalytics'
 import { ModelViewerDetail } from '../components/ModelViewer'
 
+const BASE_URL = 'http://localhost:8000'
+
 const EMPTY_FORM = {
   name: '', description: '', category: '', gender: '', ageGroup: 'adult',
   styleType: '', subStyle: '', occasion: '', metalOptions: [],
@@ -22,16 +24,15 @@ const STATUS_LABELS = {
   delivered: 'Delivered', cancelled: 'Cancelled'
 }
 const STATUS_COLORS = {
-  working:         'bg-blue-500/15   text-blue-400   border border-blue-500/25',
-  finishing:       'bg-purple-500/15 text-purple-400 border border-purple-500/25',
-  packaging:       'bg-yellow-500/15 text-yellow-400 border border-yellow-500/25',
-  transit:         'bg-orange-500/15 text-orange-400 border border-orange-500/25',
-  ready_for_pickup:'bg-teal-500/15   text-teal-400   border border-teal-500/25',
-  delivered:       'bg-[#C9A96E]/12  text-[#C9A96E]  border border-[#C9A96E]/25',
-  cancelled:       'bg-red-500/15    text-red-400    border border-red-500/25'
+  working: 'bg-blue-500/15   text-blue-400   border border-blue-500/25',
+  finishing: 'bg-purple-500/15 text-purple-400 border border-purple-500/25',
+  packaging: 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/25',
+  transit: 'bg-orange-500/15 text-orange-400 border border-orange-500/25',
+  ready_for_pickup: 'bg-teal-500/15   text-teal-400   border border-teal-500/25',
+  delivered: 'bg-[#C9A96E]/12  text-[#C9A96E]  border border-[#C9A96E]/25',
+  cancelled: 'bg-red-500/15    text-red-400    border border-red-500/25'
 }
 
-/* ── Shared style primitives ──────────────────────────────── */
 const inp = [
   'w-full rounded-lg px-3 py-2.5 text-sm outline-none transition-all',
   'bg-white/[0.04] border border-white/[0.08] text-[#F0EBE1]',
@@ -51,7 +52,13 @@ export default function AdminDashboard() {
   const [customers, setCustomers] = useState([])
   const [goldRate, setGoldRate] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
-  const [images, setImages] = useState([])
+
+  // ── Image state ───────────────────────────────────────────
+  // newImages: File objects the admin just selected
+  const [newImages, setNewImages] = useState([])
+  // existingImages: paths already saved on the server (e.g. /uploads/images/xxx.jpg)
+  const [existingImages, setExistingImages] = useState([])
+
   const [model, setModel] = useState(null)
   const [modelPreviewUrl, setModelPreviewUrl] = useState(null)
   const prevBlobUrl = useRef(null)
@@ -69,9 +76,9 @@ export default function AdminDashboard() {
     fetchProducts(); fetchGoldRate(); fetchOrders(); fetchCustomers()
   }, [])
 
-  const fetchProducts  = async () => { const { data } = await axios.get('/products'); setProducts(data) }
-  const fetchGoldRate  = async () => { const { data } = await axios.get('/gold-rate'); setGoldRate(data) }
-  const fetchOrders    = async () => { const { data } = await axios.get('/admin/orders'); if (!data.error) setOrders(data) }
+  const fetchProducts = async () => { const { data } = await axios.get('/products'); setProducts(data) }
+  const fetchGoldRate = async () => { const { data } = await axios.get('/gold-rate'); setGoldRate(data) }
+  const fetchOrders = async () => { const { data } = await axios.get('/admin/orders'); if (!data.error) setOrders(data) }
   const fetchCustomers = async () => { const { data } = await axios.get('/admin/customers'); if (!data.error) setCustomers(data) }
 
   const handleScrape = async () => {
@@ -91,6 +98,7 @@ export default function AdminDashboard() {
   const handleSubmit = async (e) => {
     e.preventDefault(); setLoading(true)
     const fd = new FormData()
+
     Object.entries(form).forEach(([key, val]) => {
       if (['metalOptions', 'purityGold', 'puritySilver', 'styleType', 'subStyle'].includes(key)) return
       fd.append(key, val)
@@ -98,17 +106,36 @@ export default function AdminDashboard() {
     fd.append('style', JSON.stringify({ type: form.styleType, subStyle: form.subStyle || null }))
     fd.append('metalOptions', JSON.stringify(form.metalOptions))
     fd.append('purityOptions', JSON.stringify({ gold: form.purityGold, silver: form.puritySilver }))
-    images.forEach(img => fd.append('images', img))
+
+    // Send the list of existing images the admin wants to keep
+    fd.append('existingImages', JSON.stringify(existingImages))
+
+    // Append any newly selected image files
+    newImages.forEach(img => fd.append('images', img))
+
     if (model) fd.append('model', model)
+
     try {
       if (editingId) {
         const { data } = await axios.put(`/products/${editingId}`, fd)
-        if (data.error) toast.error(data.error)
-        else { toast.success('Product updated!'); resetForm(); fetchProducts() }
+        if (data.error) {
+          toast.error(data.error)
+        } else {
+          toast.success('Product updated!')
+          resetForm()
+          await fetchProducts()
+          setTab('products') // ← bring admin back to the products list
+        }
       } else {
         const { data } = await axios.post('/products', fd)
-        if (data.error) toast.error(data.error)
-        else { toast.success('Product created!'); resetForm(); fetchProducts() }
+        if (data.error) {
+          toast.error(data.error)
+        } else {
+          toast.success('Product created!')
+          resetForm()
+          await fetchProducts()
+          setTab('products') // ← bring admin back to the products list
+        }
       }
     } catch { toast.error('Something went wrong') }
     setLoading(false)
@@ -129,9 +156,14 @@ export default function AdminDashboard() {
       customizable: product.customizable, pickupAvailable: product.pickupAvailable,
       region: product.region, inStock: product.inStock
     })
+    // Load existing images from the product so admin can see and optionally remove them
+    setExistingImages(product.images || [])
+    setNewImages([])
+
     if (prevBlobUrl.current) { URL.revokeObjectURL(prevBlobUrl.current); prevBlobUrl.current = null }
-    setModelPreviewUrl(product.model3D ? `http://localhost:8000${product.model3D}` : null)
-    setTab('add'); window.scrollTo(0, 0)
+    setModelPreviewUrl(product.model3D ? `${BASE_URL}${product.model3D}` : null)
+    setTab('add')
+    window.scrollTo(0, 0)
   }
 
   const handleDelete = async (id) => {
@@ -154,10 +186,21 @@ export default function AdminDashboard() {
     prevBlobUrl.current = blobUrl; setModel(file); setModelPreviewUrl(blobUrl)
   }
 
+  // Remove an existing (already-saved) image from the keep list
+  const removeExistingImage = (path) => {
+    setExistingImages(prev => prev.filter(p => p !== path))
+  }
+
+  // Remove a newly selected (not yet uploaded) image
+  const removeNewImage = (index) => {
+    setNewImages(prev => prev.filter((_, i) => i !== index))
+  }
+
   const resetForm = () => {
     if (prevBlobUrl.current) { URL.revokeObjectURL(prevBlobUrl.current); prevBlobUrl.current = null }
-    setForm(EMPTY_FORM); setImages([]); setModel(null); setModelPreviewUrl(null); setEditingId(null)
+    setForm(EMPTY_FORM); setNewImages([]); setExistingImages([]); setModel(null); setModelPreviewUrl(null); setEditingId(null)
   }
+
   const toggle = (arr, val) => arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]
 
   const TABS = ['analytics', 'products', 'add', 'orders', 'customers', 'gold rate']
@@ -171,7 +214,7 @@ export default function AdminDashboard() {
         <div className="flex items-center gap-3">
           <div className="w-0.5 h-6 rounded-full" style={{ background: 'linear-gradient(to bottom, #C9A96E, #0D9488)' }} />
           <h1 className="font-display text-xl font-bold tracking-widest uppercase" style={{ color: '#F0EBE1' }}>
-            Maryurika Admin
+            Mayurika Admin
           </h1>
         </div>
         <span className="text-sm" style={{ color: 'rgba(240,235,225,0.4)' }}>
@@ -202,7 +245,7 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* ── Analytics (full-width) ─────────────────────────────── */}
+      {/* ── Analytics ──────────────────────────────────────────── */}
       {tab === 'analytics' && <AdminAnalytics />}
 
       {/* ── Content Pane ───────────────────────────────────────── */}
@@ -248,9 +291,17 @@ export default function AdminDashboard() {
                         onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)'}>
                         <td className="px-4 py-3">
                           {p.images?.[0]
-                            ? <img src={`http://localhost:8000${p.images[0]}`} className="w-10 h-10 object-cover rounded-lg" />
-                            : <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xs"
-                                style={{ background: '#141420', color: 'rgba(240,235,225,0.3)' }}>N/A</div>}
+                            ? <img
+                              src={`${BASE_URL}${p.images[0]}`}
+                              alt={p.name}
+                              className="w-10 h-10 object-cover rounded-lg"
+                              onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
+                            />
+                            : null}
+                          <div className="w-10 h-10 rounded-lg items-center justify-center text-xs"
+                            style={{ background: '#141420', color: 'rgba(240,235,225,0.3)', display: p.images?.[0] ? 'none' : 'flex' }}>
+                            N/A
+                          </div>
                         </td>
                         <td className="px-4 py-3 font-medium" style={{ color: '#F0EBE1' }}>{p.name}</td>
                         <td className="px-4 py-3 capitalize" style={{ color: 'rgba(240,235,225,0.55)' }}>{p.category}</td>
@@ -286,7 +337,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ADD/EDIT PRODUCT TAB */}
+        {/* ADD / EDIT PRODUCT TAB */}
         {tab === 'add' && (
           <form onSubmit={handleSubmit}
             className="rounded-2xl p-7 space-y-7"
@@ -302,17 +353,16 @@ export default function AdminDashboard() {
                 </h2>
               </div>
               {editingId && (
-                <button type="button" onClick={resetForm}
+                <button type="button" onClick={() => { resetForm(); setTab('products') }}
                   className="text-sm transition-colors"
                   style={{ color: 'rgba(240,235,225,0.35)' }}
                   onMouseEnter={e => e.currentTarget.style.color = 'rgba(240,235,225,0.7)'}
                   onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,235,225,0.35)'}>
-                  Cancel Edit
+                  ← Cancel Edit
                 </button>
               )}
             </div>
 
-            {/* Divider */}
             <div className="divider-gold" />
 
             <div className="grid grid-cols-2 gap-4">
@@ -331,7 +381,7 @@ export default function AdminDashboard() {
                 <label className={lbl}>Category</label>
                 <select className={inp} value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} required>
                   <option value="">Select</option>
-                  {['ring','necklace','bracelet','earring','anklet','chain','cufflink','tayo','tilhari','churra','pote','kantha','set'].map(c =>
+                  {['ring', 'necklace', 'bracelet', 'earring', 'anklet', 'chain', 'cufflink', 'tayo', 'tilhari', 'churra', 'pote', 'kantha', 'set'].map(c =>
                     <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
@@ -370,7 +420,7 @@ export default function AdminDashboard() {
                   <label className={lbl}>Sub Style</label>
                   <select className={inp} value={form.subStyle} onChange={e => setForm({ ...form, subStyle: e.target.value })}>
                     <option value="">Select</option>
-                    {['gothic','cybersilian','streetwear','minimalist','cottagecore'].map(s => <option key={s} value={s}>{s}</option>)}
+                    {['gothic', 'cybersilian', 'streetwear', 'minimalist', 'cottagecore'].map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
               )}
@@ -378,7 +428,7 @@ export default function AdminDashboard() {
                 <label className={lbl}>Occasion</label>
                 <select className={inp} value={form.occasion} onChange={e => setForm({ ...form, occasion: e.target.value })}>
                   <option value="">Select</option>
-                  {['wedding','casual','festival','daily','gifting'].map(o => <option key={o} value={o}>{o}</option>)}
+                  {['wedding', 'casual', 'festival', 'daily', 'gifting'].map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
             </div>
@@ -387,7 +437,7 @@ export default function AdminDashboard() {
             <div>
               <label className={lbl}>Metal Options</label>
               <div className="flex gap-5">
-                {['gold','silver'].map(m => (
+                {['gold', 'silver'].map(m => (
                   <label key={m} className="flex items-center gap-2.5 text-sm cursor-pointer"
                     style={{ color: 'rgba(240,235,225,0.7)' }}>
                     <input type="checkbox"
@@ -405,7 +455,7 @@ export default function AdminDashboard() {
                 <div>
                   <label className={lbl}>Gold Purity</label>
                   <div className="flex gap-4 flex-wrap">
-                    {['24K','23K','22K','18K'].map(p => (
+                    {['24K', '23K', '22K', '18K'].map(p => (
                       <label key={p} className="flex items-center gap-1.5 text-sm cursor-pointer"
                         style={{ color: 'rgba(240,235,225,0.7)' }}>
                         <input type="checkbox" checked={form.purityGold.includes(p)}
@@ -420,7 +470,7 @@ export default function AdminDashboard() {
                 <div>
                   <label className={lbl}>Silver Purity</label>
                   <div className="flex gap-4 flex-wrap">
-                    {['999','925'].map(p => (
+                    {['999', '925'].map(p => (
                       <label key={p} className="flex items-center gap-1.5 text-sm cursor-pointer"
                         style={{ color: 'rgba(240,235,225,0.7)' }}>
                         <input type="checkbox" checked={form.puritySilver.includes(p)}
@@ -452,7 +502,7 @@ export default function AdminDashboard() {
 
             {/* Toggles */}
             <div className="flex flex-wrap gap-6">
-              {[['isTraditional','Traditional'],['hallmark','Hallmark'],['customizable','Customizable'],['pickupAvailable','Pickup Available'],['inStock','In Stock']].map(([key, label]) => (
+              {[['isTraditional', 'Traditional'], ['hallmark', 'Hallmark'], ['customizable', 'Customizable'], ['pickupAvailable', 'Pickup Available'], ['inStock', 'In Stock']].map(([key, label]) => (
                 <label key={key} className="flex items-center gap-2.5 text-sm cursor-pointer"
                   style={{ color: 'rgba(240,235,225,0.7)' }}>
                   <input type="checkbox" checked={form[key]} onChange={e => setForm({ ...form, [key]: e.target.checked })}
@@ -462,12 +512,83 @@ export default function AdminDashboard() {
               ))}
             </div>
 
-            {/* Images */}
+            {/* ── IMAGES SECTION ────────────────────────────────────── */}
             <div>
-              <label className={lbl}>Product Images (max 5)</label>
-              <input type="file" accept="image/*" multiple onChange={e => setImages(Array.from(e.target.files))}
-                className="text-sm" style={{ color: 'rgba(240,235,225,0.55)' }} />
-              {images.length > 0 && <p className="text-xs mt-1" style={{ color: 'rgba(240,235,225,0.3)' }}>{images.length} image(s) selected</p>}
+              <label className={lbl}>Product Images</label>
+
+              {/* Existing images (only shown when editing) */}
+              {existingImages.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: 'rgba(240,235,225,0.3)' }}>
+                    Current images — click × to remove
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {existingImages.map((imgPath) => (
+                      <div key={imgPath} className="relative group">
+                        <img
+                          src={`${BASE_URL}${imgPath}`}
+                          alt="existing"
+                          className="w-20 h-20 object-cover rounded-xl"
+                          style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeExistingImage(imgPath)}
+                          className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition-all"
+                          style={{ background: '#EF4444', color: '#fff', border: '2px solid #04040A' }}
+                          title="Remove this image">
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* New image picker */}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={e => setNewImages(Array.from(e.target.files))}
+                className="text-sm"
+                style={{ color: 'rgba(240,235,225,0.55)' }}
+              />
+
+              {/* Preview newly selected images */}
+              {newImages.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: 'rgba(240,235,225,0.3)' }}>
+                    New images to upload — click × to remove
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {newImages.map((file, idx) => (
+                      <div key={idx} className="relative group">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={file.name}
+                          className="w-20 h-20 object-cover rounded-xl"
+                          style={{ border: '1px solid rgba(201,169,110,0.3)' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeNewImage(idx)}
+                          className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                          style={{ background: '#EF4444', color: '#fff', border: '2px solid #04040A' }}>
+                          ×
+                        </button>
+                        <p className="text-[9px] mt-1 truncate max-w-[80px]" style={{ color: 'rgba(240,235,225,0.3)' }}>{file.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {existingImages.length === 0 && newImages.length === 0 && (
+                <p className="text-xs mt-1.5" style={{ color: 'rgba(240,235,225,0.25)' }}>
+                  No images yet. Select up to 5.
+                </p>
+              )}
             </div>
 
             {/* 3D Model */}
@@ -488,13 +609,25 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            <button type="submit" disabled={loading}
-              className="w-full py-3.5 rounded-xl font-semibold text-sm tracking-widest transition-all disabled:opacity-40"
-              style={{ background: '#C9A96E', color: '#04040A' }}
-              onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#E8D4A0' }}
-              onMouseLeave={e => e.currentTarget.style.background = '#C9A96E'}>
-              {loading ? 'Saving…' : editingId ? 'Update Product' : 'Create Product'}
-            </button>
+            <div className="flex gap-3">
+              {editingId && (
+                <button type="button"
+                  onClick={() => { resetForm(); setTab('products') }}
+                  className="flex-1 py-3.5 rounded-xl font-semibold text-sm tracking-widest transition-all"
+                  style={{ border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(240,235,225,0.5)' }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}>
+                  Cancel
+                </button>
+              )}
+              <button type="submit" disabled={loading}
+                className="flex-1 py-3.5 rounded-xl font-semibold text-sm tracking-widest transition-all disabled:opacity-40"
+                style={{ background: '#C9A96E', color: '#04040A' }}
+                onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#E8D4A0' }}
+                onMouseLeave={e => e.currentTarget.style.background = '#C9A96E'}>
+                {loading ? 'Saving…' : editingId ? 'Update Product' : 'Create Product'}
+              </button>
+            </div>
           </form>
         )}
 
@@ -508,7 +641,6 @@ export default function AdminDashboard() {
               </h2>
             </div>
 
-            {/* Order detail modal */}
             {selectedOrder && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
                 style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
@@ -533,9 +665,9 @@ export default function AdminDashboard() {
                   <div className="space-y-3 mb-5">
                     {[
                       ['Customer', selectedOrder.user?.name],
-                      ['Email',    selectedOrder.user?.email],
+                      ['Email', selectedOrder.user?.email],
                       ['Delivery', selectedOrder.deliveryType],
-                      ['Total',    `Rs ${selectedOrder.grandTotal?.toLocaleString()}`],
+                      ['Total', `Rs ${selectedOrder.grandTotal?.toLocaleString()}`],
                       ['Advance Paid', `Rs ${selectedOrder.advancePaid?.toLocaleString()}`],
                     ].map(([k, v]) => (
                       <div key={k} className="flex justify-between text-sm py-2"
@@ -594,7 +726,7 @@ export default function AdminDashboard() {
                 <table className="w-full text-sm">
                   <thead style={{ background: '#0E0E18', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <tr>
-                      {['Order ID','Customer','Items','Total','Delivery','Status','Date','Action'].map(h => (
+                      {['Order ID', 'Customer', 'Items', 'Total', 'Delivery', 'Status', 'Date', 'Action'].map(h => (
                         <th key={h} className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.15em]"
                           style={{ color: 'rgba(240,235,225,0.35)' }}>{h}</th>
                       ))}
@@ -662,7 +794,7 @@ export default function AdminDashboard() {
                 <table className="w-full text-sm">
                   <thead style={{ background: '#0E0E18', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <tr>
-                      {['Name','Email','Phone','Gender','Orders','Total Spent','Joined','Status'].map(h => (
+                      {['Name', 'Email', 'Phone', 'Gender', 'Orders', 'Total Spent', 'Joined', 'Status'].map(h => (
                         <th key={h} className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.15em]"
                           style={{ color: 'rgba(240,235,225,0.35)' }}>{h}</th>
                       ))}
@@ -712,7 +844,6 @@ export default function AdminDashboard() {
         {/* GOLD RATE TAB */}
         {tab === 'gold rate' && (
           <div className="space-y-6">
-            {/* Current Rate */}
             <div className="rounded-2xl p-7" style={{ background: '#08080F', border: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="mb-5">
                 <p className="text-[10px] tracking-[0.3em] uppercase mb-1" style={{ color: 'rgba(240,235,225,0.3)' }}>Live Prices</p>
@@ -722,11 +853,10 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-3 gap-4">
                   {[
                     ['Fine Gold (9999)', goldRate.fineGoldPerTola, '#C9A96E', 'rgba(201,169,110,0.1)', 'rgba(201,169,110,0.2)'],
-                    ['Tejabi Gold',      goldRate.tejabiGoldPerTola, '#E8D4A0', 'rgba(232,212,160,0.08)', 'rgba(232,212,160,0.18)'],
-                    ['Silver',          goldRate.silverPerTola, '#94A3B8', 'rgba(148,163,184,0.08)', 'rgba(148,163,184,0.18)'],
+                    ['Tejabi Gold', goldRate.tejabiGoldPerTola, '#E8D4A0', 'rgba(232,212,160,0.08)', 'rgba(232,212,160,0.18)'],
+                    ['Silver', goldRate.silverPerTola, '#94A3B8', 'rgba(148,163,184,0.08)', 'rgba(148,163,184,0.18)'],
                   ].map(([label, val, color, bg, border]) => (
-                    <div key={label} className="rounded-xl p-5"
-                      style={{ background: bg, border: `1px solid ${border}` }}>
+                    <div key={label} className="rounded-xl p-5" style={{ background: bg, border: `1px solid ${border}` }}>
                       <p className="text-[10px] uppercase tracking-[0.15em] mb-2" style={{ color: 'rgba(240,235,225,0.38)' }}>{label}</p>
                       <p className="text-2xl font-bold" style={{ color }}>Rs {val?.toLocaleString()}</p>
                       <p className="text-xs mt-1" style={{ color: 'rgba(240,235,225,0.28)' }}>per tola</p>
@@ -751,7 +881,6 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Manual Rate */}
             <div className="rounded-2xl p-7" style={{ background: '#08080F', border: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="mb-5">
                 <p className="text-[10px] tracking-[0.3em] uppercase mb-1" style={{ color: 'rgba(240,235,225,0.3)' }}>Override</p>
@@ -759,9 +888,9 @@ export default function AdminDashboard() {
               </div>
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  ['fineGoldPerTola',   'Fine Gold / Tola (Rs)',   '291400'],
+                  ['fineGoldPerTola', 'Fine Gold / Tola (Rs)', '291400'],
                   ['tejabiGoldPerTola', 'Tejabi Gold / Tola (Rs)', '0'],
-                  ['silverPerTola',     'Silver / Tola (Rs)',       '4780'],
+                  ['silverPerTola', 'Silver / Tola (Rs)', '4780'],
                 ].map(([key, label, ph]) => (
                   <div key={key}>
                     <label className={lbl}>{label}</label>

@@ -111,10 +111,10 @@ export default function Navbar() {
 
           {/* ── Logo ─────────────────────────────────── */}
           <Link to="/" className="flex-shrink-0 flex items-center justify-center relative group">
-            <span className="font-display font-bold text-2xl md:text-3xl tracking-[0.2em] text-ink group-hover:opacity-0 transition-opacity duration-300 select-none">
+            <span className="font-display font-bold text-2xl md:text-3xl tracking-[0.2em] text-ink opacity-0 group-hover:opacity-100 transition-opacity duration-300 select-none">
               MAYURIKA
             </span>
-            <img src={logo} className="absolute w-12 opacity-0 group-hover:opacity-100 transition-opacity duration-300" alt="logo" />
+            <img src={logo} className="absolute w-12 group-hover:opacity-0 transition-opacity duration-300" alt="logo" />
           </Link>
 
           {/* ── Right icons ──────────────────────────── */}

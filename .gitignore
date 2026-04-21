@@ -1,6 +1,9 @@
 backend/.env
 backend/uploads/models/*.glb
 backend/uploads/models/
+backend/uploads/images/*.png
+backend/uploads/images/
+
 
 .claude/
 playwright-tests/

@@ -13,7 +13,6 @@ const getProducts = async (req, res) => {
         if (inStock) filter.inStock = inStock === 'true'
         if (metal) filter.metalOptions = { $in: [metal] }
 
-        // Text search on name and description
         if (search) {
             filter.$or = [
                 { name: { $regex: search, $options: 'i' } },
@@ -54,7 +53,6 @@ const createProduct = async (req, res) => {
             pickupAvailable, region, inStock
         } = req.body
 
-        // Validate required fields
         if (!name || !description || !category || !gender) {
             return res.json({ error: 'Name, description, category and gender are required' })
         }
@@ -65,12 +63,10 @@ const createProduct = async (req, res) => {
             return res.json({ error: 'Max weight must be greater than min weight' })
         }
 
-        // Handle uploaded images
         const images = req.files?.images
             ? req.files.images.map(file => `/uploads/images/${file.filename}`)
             : []
 
-        // Handle uploaded 3D model
         const model3D = req.files?.model
             ? `/uploads/models/${req.files.model[0].filename}`
             : null
@@ -114,12 +110,20 @@ const updateProduct = async (req, res) => {
         const product = await Product.findById(req.params.id)
         if (!product) return res.json({ error: 'Product not found' })
 
-        // Handle new images if uploaded
-        const newImages = req.files?.images
-            ? req.files.images.map(file => `/uploads/images/${file.filename}`)
+        // existingImages: paths the admin chose to KEEP (sent as JSON string from frontend)
+        const keptImages = req.body.existingImages
+            ? JSON.parse(req.body.existingImages)
             : product.images
 
-        // Handle new 3D model if uploaded
+        // Newly uploaded images
+        const uploadedImages = req.files?.images
+            ? req.files.images.map(file => `/uploads/images/${file.filename}`)
+            : []
+
+        // Final image list = kept existing + newly uploaded
+        const finalImages = [...keptImages, ...uploadedImages]
+
+        // 3D model: use new upload if provided, otherwise keep existing
         const newModel = req.files?.model
             ? `/uploads/models/${req.files.model[0].filename}`
             : product.model3D
@@ -131,7 +135,7 @@ const updateProduct = async (req, res) => {
                 style: req.body.style ? JSON.parse(req.body.style) : product.style,
                 metalOptions: req.body.metalOptions ? JSON.parse(req.body.metalOptions) : product.metalOptions,
                 purityOptions: req.body.purityOptions ? JSON.parse(req.body.purityOptions) : product.purityOptions,
-                images: newImages,
+                images: finalImages,
                 model3D: newModel
             },
             { returnDocument: 'after' }
